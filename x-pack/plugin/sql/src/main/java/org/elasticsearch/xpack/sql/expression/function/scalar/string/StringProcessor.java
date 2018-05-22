@@ -5,7 +5,6 @@
  */
 package org.elasticsearch.xpack.sql.expression.function.scalar.string;
 
-import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.xpack.sql.SqlIllegalArgumentException;
@@ -14,7 +13,6 @@ import org.elasticsearch.xpack.sql.expression.function.scalar.processor.runtime.
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.function.Function;
-import java.util.stream.IntStream;
 
 public class StringProcessor implements Processor {
     
@@ -48,8 +46,8 @@ public class StringProcessor implements Processor {
             int i = n.intValue();
             return i < 0 || i > 255 ? null : String.valueOf((char) i);
         }),
-        LCASE((String s) -> s.toLowerCase()),
-        UCASE((String s) -> s.toUpperCase()),
+        LCASE(String::toLowerCase),
+        UCASE(String::toUpperCase),
         LENGTH((String s) -> StringFunctionUtils.trimTrailingWhitespaces(s).length()),
         RTRIM((String s) -> StringFunctionUtils.trimTrailingWhitespaces(s)),
         LTRIM((String s) -> StringFunctionUtils.trimLeadingWhitespaces(s)),
@@ -64,7 +62,8 @@ public class StringProcessor implements Processor {
             
             return new String(spaces);
         }),
-        BIT_LENGTH((String s) -> s.getBytes().length * 8);
+        BIT_LENGTH((String s) -> s.getBytes().length * 8),
+        CHAR_LENGTH(String::length);
 
         private final Function<Object, Object> apply;
 

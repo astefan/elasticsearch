@@ -12,22 +12,22 @@ import org.elasticsearch.xpack.sql.tree.NodeInfo;
 import org.elasticsearch.xpack.sql.type.DataType;
 
 /**
- * Uppercases all lowercase letters in a string.
+ * Returns the length (in characters) of the string expression.
  */
-public class UCase extends UnaryStringFunction {
+public class CharLength extends UnaryStringFunction {
 
-    public UCase(Location location, Expression field) {
+    public CharLength(Location location, Expression field) {
         super(location, field);
     }
 
     @Override
-    protected NodeInfo<UCase> info() {
-        return NodeInfo.create(this, UCase::new, field());
+    protected NodeInfo<CharLength> info() {
+        return NodeInfo.create(this, CharLength::new, field());
     }
 
     @Override
-    protected UCase replaceChild(Expression newChild) {
-        return new UCase(location(), newChild);
+    protected CharLength replaceChild(Expression newChild) {
+        return new CharLength(location(), newChild);
     }
 
     @Override
@@ -37,12 +37,11 @@ public class UCase extends UnaryStringFunction {
 
     @Override
     protected StringOperation operation() {
-        return StringOperation.UCASE;
+        return StringOperation.CHAR_LENGTH;
     }
 
     @Override
     public DataType dataType() {
-        return DataType.KEYWORD;
+        return DataType.INTEGER;
     }
-
 }
