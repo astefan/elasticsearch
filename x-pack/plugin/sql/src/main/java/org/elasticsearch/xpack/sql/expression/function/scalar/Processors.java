@@ -17,7 +17,14 @@ import org.elasticsearch.xpack.sql.expression.function.scalar.processor.runtime.
 import org.elasticsearch.xpack.sql.expression.function.scalar.processor.runtime.ConstantProcessor;
 import org.elasticsearch.xpack.sql.expression.function.scalar.processor.runtime.HitExtractorProcessor;
 import org.elasticsearch.xpack.sql.expression.function.scalar.processor.runtime.Processor;
+import org.elasticsearch.xpack.sql.expression.function.scalar.string.BinaryStringNumericProcessor;
+import org.elasticsearch.xpack.sql.expression.function.scalar.string.BinaryStringStringProcessor;
+import org.elasticsearch.xpack.sql.expression.function.scalar.string.ConcatFunctionProcessor;
+import org.elasticsearch.xpack.sql.expression.function.scalar.string.InsertFunctionProcessor;
+import org.elasticsearch.xpack.sql.expression.function.scalar.string.LocateFunctionProcessor;
+import org.elasticsearch.xpack.sql.expression.function.scalar.string.ReplaceFunctionProcessor;
 import org.elasticsearch.xpack.sql.expression.function.scalar.string.StringProcessor;
+import org.elasticsearch.xpack.sql.expression.function.scalar.string.SubstringFunctionProcessor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,6 +56,13 @@ public final class Processors {
         entries.add(new Entry(Processor.class, MathProcessor.NAME, MathProcessor::new));
         // string
         entries.add(new Entry(Processor.class, StringProcessor.NAME, StringProcessor::new));
+        entries.add(new Entry(Processor.class, BinaryStringNumericProcessor.NAME, BinaryStringNumericProcessor::new));
+        entries.add(new Entry(Processor.class, BinaryStringStringProcessor.NAME, BinaryStringStringProcessor::new));
+        entries.add(new Entry(Processor.class, ConcatFunctionProcessor.NAME, ConcatFunctionProcessor::new));
+        entries.add(new Entry(Processor.class, InsertFunctionProcessor.NAME, InsertFunctionProcessor::new));
+        entries.add(new Entry(Processor.class, LocateFunctionProcessor.NAME, LocateFunctionProcessor::new));
+        entries.add(new Entry(Processor.class, ReplaceFunctionProcessor.NAME, ReplaceFunctionProcessor::new));
+        entries.add(new Entry(Processor.class, SubstringFunctionProcessor.NAME, SubstringFunctionProcessor::new));
         return entries;
     }
 }

@@ -16,6 +16,8 @@ import java.util.function.BiFunction;
 
 public class BinaryStringStringProcessor extends BinaryStringProcessor<BinaryStringStringOperation, String, Number> {
     
+    public static final String NAME = "ssb";
+    
     public BinaryStringStringProcessor(StreamInput in) throws IOException {
         super(in, i -> i.readEnum(BinaryStringStringOperation.class));
     }
@@ -25,6 +27,7 @@ public class BinaryStringStringProcessor extends BinaryStringProcessor<BinaryStr
     }
 
     public enum BinaryStringStringOperation implements BiFunction<String, String, Number> {
+        // not implemented yet. Relies on soundex similarity for computation.
         DIFFERENCE((s,c) -> {
             return 0;
         }),
@@ -56,14 +59,20 @@ public class BinaryStringStringProcessor extends BinaryStringProcessor<BinaryStr
         if (left == null || right == null) {
             return null;
         }
-        if (!(left instanceof String)) {
-            throw new SqlIllegalArgumentException("A string is required; received [{}]", left);
+        if (!(left instanceof String || left instanceof Character)) {
+            throw new SqlIllegalArgumentException("A string/char is required; received [{}]", left);
         }
-        if (!(right instanceof String)) {
-            throw new SqlIllegalArgumentException("A string is required; received [{}]", right);
+        if (!(right instanceof String || right instanceof Character)) {
+            throw new SqlIllegalArgumentException("A string/char is required; received [{}]", right);
         }
 
-        return operation().apply((String) left, (String) right);
+        return operation().apply(left instanceof Character ? left.toString() : (String) left, 
+                right instanceof Character ? right.toString() : (String) right);
+    }
+
+    @Override
+    public String getWriteableName() {
+        return NAME;
     }
 
 }

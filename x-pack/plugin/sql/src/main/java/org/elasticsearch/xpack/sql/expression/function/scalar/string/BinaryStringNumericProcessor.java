@@ -16,6 +16,8 @@ import java.util.function.BiFunction;
 
 public class BinaryStringNumericProcessor extends BinaryStringProcessor<BinaryStringNumericOperation, Number, String> {
     
+    public static final String NAME = "snb";
+    
     public BinaryStringNumericProcessor(StreamInput in) throws IOException {
         super(in, i -> i.readEnum(BinaryStringNumericOperation.class));
     }
@@ -68,14 +70,19 @@ public class BinaryStringNumericProcessor extends BinaryStringProcessor<BinarySt
         if (left == null || right == null) {
             return null;
         }
-        if (!(left instanceof String)) {
-            throw new SqlIllegalArgumentException("A string is required; received [{}]", left);
+        if (!(left instanceof String || left instanceof Character)) {
+            throw new SqlIllegalArgumentException("A string/char is required; received [{}]", left);
         }
         if (!(right instanceof Number)) {
             throw new SqlIllegalArgumentException("A number is required; received [{}]", right);
         }
 
-        return operation().apply((String) left, (Number) right);
+        return operation().apply(left instanceof Character ? left.toString() : (String) left, (Number) right);
+    }
+
+    @Override
+    public String getWriteableName() {
+        return NAME;
     }
 
 }

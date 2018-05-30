@@ -1,0 +1,86 @@
+/*
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the Elastic License;
+ * you may not use this file except in compliance with the Elastic License.
+ */
+package org.elasticsearch.xpack.sql.expression.function.scalar.string;
+
+import org.elasticsearch.common.io.stream.StreamInput;
+import org.elasticsearch.common.io.stream.StreamOutput;
+import org.elasticsearch.xpack.sql.SqlIllegalArgumentException;
+import org.elasticsearch.xpack.sql.expression.function.scalar.processor.runtime.Processor;
+
+import java.io.IOException;
+
+public class InsertFunctionProcessor implements Processor {
+
+    private final Processor source, start, length, replacement;
+    public static final String NAME = "ins";
+
+    public InsertFunctionProcessor(Processor source, Processor start, Processor length, Processor replacement) {
+        this.source = source;
+        this.start = start;
+        this.length = length;
+        this.replacement = replacement;
+    }
+
+    public InsertFunctionProcessor(StreamInput in) throws IOException {
+        source = in.readNamedWriteable(Processor.class);
+        start = in.readNamedWriteable(Processor.class);
+        length = in.readNamedWriteable(Processor.class);
+        replacement = in.readNamedWriteable(Processor.class);
+    }
+
+    @Override
+    public final void writeTo(StreamOutput out) throws IOException {
+        out.writeNamedWriteable(source);
+        out.writeNamedWriteable(start);
+        out.writeNamedWriteable(length);
+        out.writeNamedWriteable(replacement);
+    }
+
+    @Override
+    public Object process(Object input) {
+        return doProcess(source.process(input), start.process(input), length.process(input), replacement.process(input));
+    }
+
+    private Object doProcess(Object source, Object start, Object length, Object replacement) {
+        if (source == null) {
+            return null;
+        }
+        if (replacement == null) {
+            return source;
+        }
+        if (!(source instanceof String || source instanceof Character)) {
+            throw new SqlIllegalArgumentException("A string/char is required; received [{}]", source);
+        }
+        if (!(replacement instanceof String || replacement instanceof Character)) {
+            throw new SqlIllegalArgumentException("A string/char is required; received [{}]", replacement);
+        }
+        if (start == null || length == null) {
+            return source;
+        }
+        if (!(start instanceof Number)) {
+            throw new SqlIllegalArgumentException("A number is required; received [{}]", start);
+        }
+        if (!(length instanceof Number)) {
+            throw new SqlIllegalArgumentException("A number is required; received [{}]", length);
+        }
+
+        int startInt = ((Number) start).intValue() - 1;
+        int realStart = startInt < 0 ? 0 : startInt;
+        StringBuilder sb = new StringBuilder(source instanceof String ? (String) source : ((Character) source).toString());
+        String replString = (replacement instanceof String ? (String) replacement : ((Character) replacement).toString());
+        if (startInt >= sb.length())
+            return source;
+        
+        return sb.replace(realStart, 
+                realStart + replString.length(), 
+                replString).toString();
+    }
+
+    @Override
+    public String getWriteableName() {
+        return NAME;
+    }
+}

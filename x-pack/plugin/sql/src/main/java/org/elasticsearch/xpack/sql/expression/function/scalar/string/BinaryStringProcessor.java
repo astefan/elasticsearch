@@ -16,7 +16,6 @@ import java.util.function.BiFunction;
 public abstract class BinaryStringProcessor<O extends Enum<?> & BiFunction<String, T, R>, T, R> extends BinaryProcessor {
     
     private final O operation;
-    public static final String NAME = "sb";
     
     public BinaryStringProcessor(Processor left, Processor right, O operation) {
         super(left, right);
@@ -30,11 +29,6 @@ public abstract class BinaryStringProcessor<O extends Enum<?> & BiFunction<Strin
     
     protected O operation() {
         return operation;
-    }
-    
-    @Override
-    public String getWriteableName() {
-        return NAME;
     }
 
     @Override
