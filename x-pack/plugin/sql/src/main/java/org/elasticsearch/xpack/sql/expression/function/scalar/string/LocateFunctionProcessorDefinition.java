@@ -19,14 +19,16 @@ public class LocateFunctionProcessorDefinition extends ProcessorDefinition {
 
     private final ProcessorDefinition pattern, source, start;
 
-    public LocateFunctionProcessorDefinition(Location location, Expression expression, ProcessorDefinition pattern, ProcessorDefinition source, ProcessorDefinition start) {
+    public LocateFunctionProcessorDefinition(Location location, Expression expression, ProcessorDefinition pattern,
+            ProcessorDefinition source, ProcessorDefinition start) {
         super(location, expression, Arrays.asList(pattern, source, start));
         this.pattern = pattern;
         this.source = source;
         this.start = start;
     }
-    
-    public LocateFunctionProcessorDefinition(Location location, Expression expression, ProcessorDefinition pattern, ProcessorDefinition source) {
+
+    public LocateFunctionProcessorDefinition(Location location, Expression expression, ProcessorDefinition pattern,
+            ProcessorDefinition source) {
         super(location, expression, Arrays.asList(pattern, source));
         this.pattern = pattern;
         this.source = source;
@@ -40,7 +42,7 @@ public class LocateFunctionProcessorDefinition extends ProcessorDefinition {
         }
         return replaceChildren(newChildren.get(0), newChildren.get(1), newChildren.get(2));
     }
-    
+
     @Override
     public final ProcessorDefinition resolveAttributes(AttributeResolver resolver) {
         ProcessorDefinition newPattern = pattern.resolveAttributes(resolver);
@@ -54,15 +56,17 @@ public class LocateFunctionProcessorDefinition extends ProcessorDefinition {
 
     @Override
     public boolean supportedByAggsOnlyQuery() {
-        return pattern.supportedByAggsOnlyQuery() && source.supportedByAggsOnlyQuery() && (start == null || start.supportedByAggsOnlyQuery());
+        return pattern.supportedByAggsOnlyQuery() && source.supportedByAggsOnlyQuery()
+                && (start == null || start.supportedByAggsOnlyQuery());
     }
 
     @Override
     public boolean resolved() {
         return pattern.resolved() && source.resolved() && start.resolved();
     }
-    
-    private ProcessorDefinition replaceChildren(ProcessorDefinition newSource, ProcessorDefinition newStart, ProcessorDefinition newLength) {
+
+    private ProcessorDefinition replaceChildren(ProcessorDefinition newSource, ProcessorDefinition newStart,
+            ProcessorDefinition newLength) {
         return new LocateFunctionProcessorDefinition(location(), expression(), newSource, newStart, newLength);
     }
 
@@ -82,7 +86,7 @@ public class LocateFunctionProcessorDefinition extends ProcessorDefinition {
     public LocateFunctionProcessor asProcessor() {
         return new LocateFunctionProcessor(pattern.asProcessor(), source.asProcessor(), start == null ? null : start.asProcessor());
     }
-    
+
     @Override
     public int hashCode() {
         return Objects.hash(pattern, source, start);
@@ -99,8 +103,6 @@ public class LocateFunctionProcessorDefinition extends ProcessorDefinition {
         }
 
         LocateFunctionProcessorDefinition other = (LocateFunctionProcessorDefinition) obj;
-        return Objects.equals(pattern, other.pattern)
-                && Objects.equals(source, other.source)
-                && Objects.equals(start, other.start);
+        return Objects.equals(pattern, other.pattern) && Objects.equals(source, other.source) && Objects.equals(start, other.start);
     }
 }

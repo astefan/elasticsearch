@@ -19,7 +19,8 @@ public class ReplaceFunctionProcessorDefinition extends ProcessorDefinition {
 
     private final ProcessorDefinition source, pattern, replacement;
 
-    public ReplaceFunctionProcessorDefinition(Location location, Expression expression, ProcessorDefinition source, ProcessorDefinition pattern, ProcessorDefinition replacement) {
+    public ReplaceFunctionProcessorDefinition(Location location, Expression expression, ProcessorDefinition source,
+            ProcessorDefinition pattern, ProcessorDefinition replacement) {
         super(location, expression, Arrays.asList(source, pattern, replacement));
         this.source = source;
         this.pattern = pattern;
@@ -55,7 +56,8 @@ public class ReplaceFunctionProcessorDefinition extends ProcessorDefinition {
         return source.resolved() && pattern.resolved() && replacement.resolved();
     }
     
-    private ProcessorDefinition replaceChildren(ProcessorDefinition newSource, ProcessorDefinition newPattern, ProcessorDefinition newReplacement) {
+    private ProcessorDefinition replaceChildren(ProcessorDefinition newSource, ProcessorDefinition newPattern,
+            ProcessorDefinition newReplacement) {
         return new ReplaceFunctionProcessorDefinition(location(), expression(), newSource, newPattern, newReplacement);
     }
 

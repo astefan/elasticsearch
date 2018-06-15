@@ -47,7 +47,9 @@ public abstract class BinaryStringFunction<T,R> extends BinaryScalarFunction {
 
     @Override
     public Object fold() {
-        return operation().apply((String) left().fold(), (T) right().fold());
+        @SuppressWarnings("unchecked")
+        T fold = (T) right().fold();
+        return operation().apply((String) left().fold(), fold);
     }
 
     @Override

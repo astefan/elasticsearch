@@ -62,7 +62,8 @@ public class LocateFunctionProcessor implements Processor {
         String stringSource = source instanceof Character ? source.toString() : (String) source;
         String stringPattern = pattern instanceof Character ? pattern.toString() : (String) pattern;
 
-        return (Number) (1 + (start != null ? stringSource.indexOf(stringPattern, ((Number) start).intValue() - 1) : stringSource.indexOf(stringPattern)));
+        return (Number) (1 + (start != null ? stringSource.indexOf(stringPattern, ((Number) start).intValue() - 1)
+                : stringSource.indexOf(stringPattern)));
     }
 
     @Override

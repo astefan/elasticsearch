@@ -11,7 +11,9 @@ import org.elasticsearch.xpack.sql.SqlIllegalArgumentException;
 import org.elasticsearch.xpack.sql.expression.function.scalar.processor.runtime.Processor;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.function.Function;
 
 public class StringProcessor implements Processor {
@@ -46,8 +48,8 @@ public class StringProcessor implements Processor {
             int i = n.intValue();
             return i < 0 || i > 255 ? null : String.valueOf((char) i);
         }),
-        LCASE(String::toLowerCase),
-        UCASE(String::toUpperCase),
+        LCASE((String s) -> s.toLowerCase(Locale.ROOT)),
+        UCASE((String s) -> s.toUpperCase(Locale.ROOT)),
         LENGTH((String s) -> StringFunctionUtils.trimTrailingWhitespaces(s).length()),
         RTRIM((String s) -> StringFunctionUtils.trimTrailingWhitespaces(s)),
         LTRIM((String s) -> StringFunctionUtils.trimLeadingWhitespaces(s)),
@@ -62,7 +64,7 @@ public class StringProcessor implements Processor {
             
             return new String(spaces);
         }),
-        BIT_LENGTH((String s) -> s.getBytes().length * 8),
+        BIT_LENGTH((String s) -> s.getBytes(StandardCharsets.UTF_8).length * 8),
         CHAR_LENGTH(String::length);
 
         private final Function<Object, Object> apply;

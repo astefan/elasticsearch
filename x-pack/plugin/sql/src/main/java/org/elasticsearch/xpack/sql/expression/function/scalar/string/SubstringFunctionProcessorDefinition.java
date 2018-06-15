@@ -19,7 +19,8 @@ public class SubstringFunctionProcessorDefinition extends ProcessorDefinition {
 
     private final ProcessorDefinition source, start, length;
 
-    public SubstringFunctionProcessorDefinition(Location location, Expression expression, ProcessorDefinition source, ProcessorDefinition start, ProcessorDefinition length) {
+    public SubstringFunctionProcessorDefinition(Location location, Expression expression, ProcessorDefinition source,
+            ProcessorDefinition start, ProcessorDefinition length) {
         super(location, expression, Arrays.asList(source, start, length));
         this.source = source;
         this.start = start;
@@ -33,7 +34,7 @@ public class SubstringFunctionProcessorDefinition extends ProcessorDefinition {
         }
         return replaceChildren(newChildren.get(0), newChildren.get(1), newChildren.get(2));
     }
-    
+
     @Override
     public final ProcessorDefinition resolveAttributes(AttributeResolver resolver) {
         ProcessorDefinition newSource = source.resolveAttributes(resolver);
@@ -54,8 +55,9 @@ public class SubstringFunctionProcessorDefinition extends ProcessorDefinition {
     public boolean resolved() {
         return source.resolved() && start.resolved() && length.resolved();
     }
-    
-    private ProcessorDefinition replaceChildren(ProcessorDefinition newSource, ProcessorDefinition newStart, ProcessorDefinition newLength) {
+
+    private ProcessorDefinition replaceChildren(ProcessorDefinition newSource, ProcessorDefinition newStart,
+            ProcessorDefinition newLength) {
         return new SubstringFunctionProcessorDefinition(location(), expression(), newSource, newStart, newLength);
     }
 
@@ -75,7 +77,7 @@ public class SubstringFunctionProcessorDefinition extends ProcessorDefinition {
     public SubstringFunctionProcessor asProcessor() {
         return new SubstringFunctionProcessor(source.asProcessor(), start.asProcessor(), length.asProcessor());
     }
-    
+
     @Override
     public int hashCode() {
         return Objects.hash(source, start, length);
@@ -92,8 +94,6 @@ public class SubstringFunctionProcessorDefinition extends ProcessorDefinition {
         }
 
         SubstringFunctionProcessorDefinition other = (SubstringFunctionProcessorDefinition) obj;
-        return Objects.equals(source, other.source)
-                && Objects.equals(start, other.start)
-                && Objects.equals(length, other.length);
+        return Objects.equals(source, other.source) && Objects.equals(start, other.start) && Objects.equals(length, other.length);
     }
 }

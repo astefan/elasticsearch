@@ -18,19 +18,20 @@ import java.util.Arrays;
 import java.util.List;
 
 /*
- * Returns a character string that is derived from the source string, beginning at the character position specified by start for length characters.
+ * Returns a character string that is derived from the source string, beginning at the character position specified by start 
+ * for length characters.
  */
 public class Substring extends ScalarFunction {
 
     private final Expression source, start, length;
-    
+
     public Substring(Location location, Expression source, Expression start, Expression length) {
         super(location, Arrays.asList(source, start, length));
         this.source = source;
         this.start = start;
         this.length = length;
     }
-    
+
     protected TypeResolution resolveType() {
         if (!childrenResolved()) {
             return new TypeResolution("Unresolved children");
@@ -40,21 +41,19 @@ public class Substring extends ScalarFunction {
         if (sourceResolution != TypeResolution.TYPE_RESOLVED) {
             return sourceResolution;
         }
-        
+
         TypeResolution startResolution = StringFunctionUtils.resolveNumericInputType(start.dataType(), functionName());
         if (startResolution != TypeResolution.TYPE_RESOLVED) {
             return startResolution;
         }
-        
+
         return StringFunctionUtils.resolveNumericInputType(length.dataType(), functionName());
     }
 
     @Override
     protected ProcessorDefinition makeProcessorDefinition() {
-        return new SubstringFunctionProcessorDefinition(location(), this,
-                ProcessorDefinitions.toProcessorDefinition(source),
-                ProcessorDefinitions.toProcessorDefinition(start),
-                ProcessorDefinitions.toProcessorDefinition(length));
+        return new SubstringFunctionProcessorDefinition(location(), this, ProcessorDefinitions.toProcessorDefinition(source),
+                ProcessorDefinitions.toProcessorDefinition(start), ProcessorDefinitions.toProcessorDefinition(length));
     }
 
     @Override
