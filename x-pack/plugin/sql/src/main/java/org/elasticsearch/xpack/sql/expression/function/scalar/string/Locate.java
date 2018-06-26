@@ -29,17 +29,10 @@ public class Locate extends ScalarFunction {
     private final Expression pattern, source, start;
     
     public Locate(Location location, Expression pattern, Expression source, Expression start) {
-        super(location, Arrays.asList(pattern, source, start));
+        super(location, start != null ? Arrays.asList(pattern, source, start) : Arrays.asList(pattern, source));
         this.pattern = pattern;
         this.source = source;
         this.start = start;
-    }
-    
-    public Locate(Location location, Expression pattern, Expression source) {
-        super(location, Arrays.asList(pattern, source));
-        this.pattern = pattern;
-        this.source = source;
-        this.start = null;
     }
     
     protected TypeResolution resolveType() {

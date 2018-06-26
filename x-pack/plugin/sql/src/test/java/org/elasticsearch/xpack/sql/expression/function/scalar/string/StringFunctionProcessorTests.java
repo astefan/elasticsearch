@@ -332,17 +332,17 @@ public class StringFunctionProcessorTests extends AbstractWireSerializingTestCas
     }
 
     public void testLocate() {
-        assertEquals(4, new Locate(EMPTY, l("bar"), l("foobarbar")).makeProcessorDefinition().asProcessor().process(null));
+        assertEquals(4, new Locate(EMPTY, l("bar"), l("foobarbar"), l(null)).makeProcessorDefinition().asProcessor().process(null));
         assertEquals(7, new Locate(EMPTY, l("bar"), l("foobarbar"), l(5)).makeProcessorDefinition().asProcessor().process(null));
 
         // test the NULL and edge case situations
         assertEquals(4, new Locate(EMPTY, l("bar"), l("foobarbar"), l(null)).makeProcessorDefinition().asProcessor().process(null));
         assertNull(new Locate(EMPTY, l("bar"), l(null), l(3)).makeProcessorDefinition().asProcessor().process(null));
-        assertEquals(0, new Locate(EMPTY, l(null), l("foobarbar")).makeProcessorDefinition().asProcessor().process(null));
+        assertEquals(0, new Locate(EMPTY, l(null), l("foobarbar"), l(null)).makeProcessorDefinition().asProcessor().process(null));
         assertEquals(0, new Locate(EMPTY, l(null), l("foobarbar"), l(null)).makeProcessorDefinition().asProcessor().process(null));
 
-        assertEquals(1, new Locate(EMPTY, l("foo"), l("foobarbar")).makeProcessorDefinition().asProcessor().process(null));
-        assertEquals(1, new Locate(EMPTY, l('o'), l('o')).makeProcessorDefinition().asProcessor().process(null));
+        assertEquals(1, new Locate(EMPTY, l("foo"), l("foobarbar"), l(null)).makeProcessorDefinition().asProcessor().process(null));
+        assertEquals(1, new Locate(EMPTY, l('o'), l('o'), l(null)).makeProcessorDefinition().asProcessor().process(null));
         assertEquals(9, new Locate(EMPTY, l('r'), l("foobarbar"), l(9)).makeProcessorDefinition().asProcessor().process(null));
         assertEquals(4, new Locate(EMPTY, l("bar"), l("foobarbar"), l(-3)).makeProcessorDefinition().asProcessor().process(null));
 
