@@ -30,10 +30,10 @@ public class LCase extends UnaryStringFunction {
         return new LCase(location(), newChild);
     }
 
-    @Override
+/*    @Override
     protected String formatScript(String template) {
         throw new UnsupportedOperationException("Not supported yet");
-    }
+    }*/
 
     @Override
     protected StringOperation operation() {
@@ -44,5 +44,4 @@ public class LCase extends UnaryStringFunction {
     public DataType dataType() {
         return DataType.KEYWORD;
     }
-
 }

@@ -27,7 +27,8 @@ public class RestSqlIT extends RestSqlTestCase {
     static final boolean SSL_ENABLED = Booleans.parseBoolean(System.getProperty("tests.ssl.enabled"));
 
     static Settings securitySettings() {
-        String token = basicAuthHeaderValue("test_admin", new SecureString("x-pack-test-password".toCharArray()));
+        //String token = basicAuthHeaderValue("test_admin", new SecureString("x-pack-test-password".toCharArray()));
+        String token = basicAuthHeaderValue("elastic_admin", new SecureString("elastic_password".toCharArray()));
         Settings.Builder builder = Settings.builder()
                 .put(ThreadContext.PREFIX + ".Authorization", token);
         if (SSL_ENABLED) {

@@ -12,7 +12,7 @@ import org.elasticsearch.xpack.sql.tree.NodeInfo;
 import org.elasticsearch.xpack.sql.type.DataType;
 
 /**
- * Returns the ASCII code of the leftmost character of the given (char) expression.
+ * Returns returns the number of bits contained within the value expression.
  */
 public class BitLength extends UnaryStringFunction {
 
@@ -30,10 +30,10 @@ public class BitLength extends UnaryStringFunction {
         return new BitLength(location(), newChild);
     }
 
-    @Override
+/*    @Override
     protected String formatScript(String template) {
         throw new UnsupportedOperationException("Not supported yet");
-    }
+    }*/
 
     @Override
     protected StringOperation operation() {

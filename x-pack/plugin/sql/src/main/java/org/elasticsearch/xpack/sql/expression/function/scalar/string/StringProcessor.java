@@ -97,6 +97,11 @@ public class StringProcessor implements Processor {
         public final Object apply(Object l) {
             return apply.apply(l);
         }
+
+        @Override
+        public String toString() {
+            return this == CHAR ? "character" : super.toString();
+        }
     }
     
     public static final String NAME = "s";

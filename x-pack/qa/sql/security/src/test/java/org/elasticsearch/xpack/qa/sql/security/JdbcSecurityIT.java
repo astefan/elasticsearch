@@ -34,8 +34,10 @@ public class JdbcSecurityIT extends SqlSecurityTestCase {
     static Properties adminProperties() {
         // tag::admin_properties
         Properties properties = new Properties();
-        properties.put("user", "test_admin");
-        properties.put("password", "x-pack-test-password");
+        //properties.put("user", "test_admin");
+        //properties.put("password", "x-pack-test-password");
+        properties.put("user", "elastic_admin");
+        properties.put("password", "elastic_password");
         // end::admin_properties
         addSslPropertiesIfNeeded(properties);
         return properties;

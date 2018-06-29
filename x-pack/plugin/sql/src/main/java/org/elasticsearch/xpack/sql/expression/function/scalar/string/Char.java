@@ -40,10 +40,10 @@ public class Char extends UnaryStringFunction {
         return new Char(location(), newChild);
     }
 
-    @Override
+/*    @Override
     protected String formatScript(String template) {
         throw new UnsupportedOperationException("Not supported yet");
-    }
+    }*/
 
     @Override
     protected StringOperation operation() {

@@ -30,10 +30,10 @@ public class UCase extends UnaryStringFunction {
         return new UCase(location(), newChild);
     }
 
-    @Override
+/*    @Override
     protected String formatScript(String template) {
         throw new UnsupportedOperationException("Not supported yet");
-    }
+    }*/
 
     @Override
     protected StringOperation operation() {

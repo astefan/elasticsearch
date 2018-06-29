@@ -338,6 +338,7 @@ public class FunctionRegistry {
         T build(Location location, Expression lhs, Expression rhs);
     }
 
+    @SuppressWarnings("overloads")
     private static FunctionDefinition def(Class<? extends Function> function, FunctionBuilder builder,
             boolean datetime, String... aliases) {
         String primaryName = normalize(function.getSimpleName());

@@ -206,7 +206,8 @@ final class TypeConverter {
             case REAL:
                 return floatValue(v);  // Float might be represented as string for infinity and NaN values
             case TIMESTAMP:
-                return ((Number) v).longValue();
+                //return ((Number) v).longValue();
+                return new Timestamp(((Number) v).longValue());
             default:
                 throw new SQLException("Unexpected column type [" + columnType.getName() + "]");
 

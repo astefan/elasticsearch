@@ -30,10 +30,10 @@ public class RTrim extends UnaryStringFunction {
         return new RTrim(location(), newChild);
     }
 
-    @Override
+/*    @Override
     protected String formatScript(String template) {
         throw new UnsupportedOperationException("Not supported yet");
-    }
+    }*/
 
     @Override
     protected StringOperation operation() {

@@ -30,10 +30,10 @@ public class Ascii extends UnaryStringFunction {
         return new Ascii(location(), newChild);
     }
 
-    @Override
+/*    @Override
     protected String formatScript(String template) {
         throw new UnsupportedOperationException("Not supported yet");
-    }
+    }*/
 
     @Override
     protected StringOperation operation() {

@@ -19,6 +19,11 @@ SELECT emp_no, ASCII(first_name) FROM "test_emp" WHERE ASCII(first_name) < 10010
 stringCharFilter
 SELECT emp_no, CHAR(emp_no % 10000) m FROM "test_emp" WHERE CHAR(emp_no % 10000) = 'A';
 
+asciiGroupByAndOrderBy
+SELECT ASCII(first_name),COUNT(*) FROM "test_emp" WHERE ASCII(first_name) < 75 GROUP BY ASCII(first_name) ORDER BY ASCII(first_name) DESC;
+
+charGroupByAndOrderBy
+SELECT CHAR(emp_no % 10000) FROM "test_emp" WHERE emp_no > 10010 GROUP BY CHAR(emp_no % 10000) ORDER BY CHAR(emp_no % 10000) DESC;
 //
 // constants
 //
