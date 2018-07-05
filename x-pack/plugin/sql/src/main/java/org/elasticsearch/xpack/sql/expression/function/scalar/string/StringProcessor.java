@@ -98,6 +98,10 @@ public class StringProcessor implements Processor {
             return apply.apply(l);
         }
 
+        /*
+         * Overriden to "translate" the function name ("char") into a function name that is not a reserved keyword in java.
+         * Used in Painless scripting.
+         */
         @Override
         public String toString() {
             return this == CHAR ? "character" : super.toString();

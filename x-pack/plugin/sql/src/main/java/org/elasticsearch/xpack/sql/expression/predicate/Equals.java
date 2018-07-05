@@ -38,6 +38,6 @@ public class Equals extends BinaryComparison {
 
     @Override
     public String symbol() {
-        return "=";
+        return "==";
     }
 }

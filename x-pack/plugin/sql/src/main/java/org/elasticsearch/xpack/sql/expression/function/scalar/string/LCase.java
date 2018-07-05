@@ -30,11 +30,6 @@ public class LCase extends UnaryStringFunction {
         return new LCase(location(), newChild);
     }
 
-/*    @Override
-    protected String formatScript(String template) {
-        throw new UnsupportedOperationException("Not supported yet");
-    }*/
-
     @Override
     protected StringOperation operation() {
         return StringOperation.LCASE;

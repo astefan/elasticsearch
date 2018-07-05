@@ -30,11 +30,6 @@ public class BitLength extends UnaryStringFunction {
         return new BitLength(location(), newChild);
     }
 
-/*    @Override
-    protected String formatScript(String template) {
-        throw new UnsupportedOperationException("Not supported yet");
-    }*/
-
     @Override
     protected StringOperation operation() {
         return StringOperation.BIT_LENGTH;

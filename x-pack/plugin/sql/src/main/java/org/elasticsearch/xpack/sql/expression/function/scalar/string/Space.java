@@ -40,11 +40,6 @@ public class Space extends UnaryStringFunction {
         return new Space(location(), newChild);
     }
 
-/*    @Override
-    protected String formatScript(String template) {
-        throw new UnsupportedOperationException("Not supported yet");
-    }*/
-
     @Override
     protected StringOperation operation() {
         return StringOperation.SPACE;

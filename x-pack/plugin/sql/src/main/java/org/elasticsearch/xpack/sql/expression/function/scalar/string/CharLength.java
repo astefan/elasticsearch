@@ -30,11 +30,6 @@ public class CharLength extends UnaryStringFunction {
         return new CharLength(location(), newChild);
     }
 
-/*    @Override
-    protected String formatScript(String template) {
-        throw new UnsupportedOperationException("Not supported yet");
-    }*/
-
     @Override
     protected StringOperation operation() {
         return StringOperation.CHAR_LENGTH;

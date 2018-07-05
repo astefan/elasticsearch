@@ -45,8 +45,8 @@ public final class InternalSqlScriptUtils {
         return (String) StringOperation.UCASE.apply(s);
     }
     
-    public static String length(String s) {
-        return (String) StringOperation.LENGTH.apply(s);
+    public static Integer length(String s) {
+        return (Integer) StringOperation.LENGTH.apply(s);
     }
     
     public static String rtrim(String s) {

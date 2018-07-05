@@ -11,16 +11,16 @@ import org.elasticsearch.xpack.sql.expression.function.scalar.UnaryScalarFunctio
 import org.elasticsearch.xpack.sql.expression.function.scalar.processor.definition.ProcessorDefinition;
 import org.elasticsearch.xpack.sql.expression.function.scalar.processor.definition.ProcessorDefinitions;
 import org.elasticsearch.xpack.sql.expression.function.scalar.processor.definition.UnaryProcessorDefinition;
-import org.elasticsearch.xpack.sql.expression.function.scalar.script.ParamsBuilder;
 import org.elasticsearch.xpack.sql.expression.function.scalar.script.ScriptTemplate;
 import org.elasticsearch.xpack.sql.expression.function.scalar.string.StringProcessor.StringOperation;
 import org.elasticsearch.xpack.sql.tree.Location;
 import org.elasticsearch.xpack.sql.util.StringUtils;
 
+import java.util.Locale;
 import java.util.Objects;
 
+import static java.lang.String.format;
 import static org.elasticsearch.xpack.sql.expression.function.scalar.script.ParamsBuilder.paramsBuilder;
-import static org.elasticsearch.xpack.sql.expression.function.scalar.script.ScriptTemplate.formatTemplate;
 
 public abstract class UnaryStringFunction extends UnaryScalarFunction {
 
@@ -56,18 +56,21 @@ public abstract class UnaryStringFunction extends UnaryScalarFunction {
 
     protected abstract StringOperation operation();
     
+    @Override
     protected ScriptTemplate asScriptFrom(FieldAttribute field) {
-        ParamsBuilder params = paramsBuilder();
-
-        String template = formatTemplate(template());
-        params.variable(field.isInexact() ? field.exactAttribute().name() : field.name());
-        
-        return new ScriptTemplate(template, params.build(), dataType());
+        //TODO change this to use _source instead of the exact form (aka field.keyword for text fields)
+        return new ScriptTemplate(formatScript("doc[{}].value"),
+                paramsBuilder().variable(field.isInexact() ? field.exactAttribute().name() : field.name()).build(),
+                dataType());
     }
     
-    protected String template() {
-        // re-use the name of the Enum values to call the Painless methods with the same names
-        return "{sql}." + StringUtils.underscoreToLowerCamelCase(operation().toString()) + "(doc[{}].value)";
+    @Override
+    protected String formatScript(String template) {
+        // basically, transform the script to InternalSqlScriptUtils.[function_name](other_function_or_field_name)
+        return super.formatScript(
+                format(Locale.ROOT, "{sql}.%s(%s)", 
+                        StringUtils.underscoreToLowerCamelCase(operation().toString()), 
+                        template));
     }
 
     @Override

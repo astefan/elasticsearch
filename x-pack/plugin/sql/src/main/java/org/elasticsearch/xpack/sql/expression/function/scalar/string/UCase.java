@@ -30,11 +30,6 @@ public class UCase extends UnaryStringFunction {
         return new UCase(location(), newChild);
     }
 
-/*    @Override
-    protected String formatScript(String template) {
-        throw new UnsupportedOperationException("Not supported yet");
-    }*/
-
     @Override
     protected StringOperation operation() {
         return StringOperation.UCASE;
