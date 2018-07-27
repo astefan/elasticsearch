@@ -133,22 +133,12 @@ class JdbcResultSet implements ResultSet, JdbcWrapper {
 
     @Override
     public boolean getBoolean(int columnIndex) throws SQLException {
-        Object val = column(columnIndex);
-        try {
-            return val != null ? (Boolean) val : false;
-        } catch (ClassCastException cce) {
-            throw new SQLException("unable to convert column " + columnIndex + " to a boolean", cce);
-        }
+        return column(columnIndex) != null ? getObject(columnIndex, Boolean.class) : false; 
     }
 
     @Override
     public byte getByte(int columnIndex) throws SQLException {
-        Object val = column(columnIndex);
-        try {
-            return val != null ? ((Number) val).byteValue() : 0;
-        } catch (ClassCastException cce) {
-            throw new SQLException("unable to convert column " + columnIndex + " to a byte", cce);
-        }
+        return column(columnIndex) != null ? getObject(columnIndex, Byte.class) : 0;
     }
 
     @Override

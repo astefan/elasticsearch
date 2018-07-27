@@ -355,6 +355,12 @@ final class TypeConverter {
             case FLOAT:
             case DOUBLE:
                 return safeToByte(safeToLong(((Number) val).doubleValue()));
+            case VARCHAR:
+                try {
+                    return Byte.valueOf((String) val);
+                } catch (NumberFormatException e) {
+                    throw new SQLException(format(Locale.ROOT, "Unable to convert value [%.128s] to a byte", val), e);
+                }
             default:
         }
 
