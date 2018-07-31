@@ -19,11 +19,13 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -34,21 +36,23 @@ import static java.lang.String.format;
 public class ResultSetTestCase extends JdbcIntegrationTestCase {
     
     private static final Set<String> fieldsNames = Stream.of("test_byte", "test_integer", "test_long", "test_short", "test_double",
-            "test_float", "test_half_float", "test_scaled_float", "test_keyword")
+            "test_float", "test_keyword")
             .collect(Collectors.toCollection(HashSet::new));
     
     public void testGettingValidByteWithoutCasting() throws Exception {
         byte random1 = randomByte();
         byte random2 = randomValueOtherThan(random1, () -> randomByte());
-        createTestDataForByteValueTests(random1, random2);
+        byte random3 = randomValueOtherThanMany(Arrays.asList(random1, random2)::contains, () -> randomByte());
+        
+        createTestDataForByteValueTests(random1, random2, random3);
         
         try (Connection connection = esJdbc()) {
-            try (PreparedStatement statement = connection.prepareStatement("SELECT test_byte, test_null_byte FROM test")) {
+            try (PreparedStatement statement = connection.prepareStatement("SELECT test_byte, test_null_byte, test_keyword FROM test")) {
                 try (ResultSet results = statement.executeQuery()) {
                     ResultSetMetaData resultSetMetaData = results.getMetaData();
 
                     results.next();
-                    assertEquals(2, resultSetMetaData.getColumnCount());
+                    assertEquals(3, resultSetMetaData.getColumnCount());
                     assertEquals(Types.TINYINT, resultSetMetaData.getColumnType(1));
                     assertEquals(Types.TINYINT, resultSetMetaData.getColumnType(2));
                     assertEquals(random1, results.getByte(1));
@@ -64,9 +68,8 @@ public class ResultSetTestCase extends JdbcIntegrationTestCase {
                     assertEquals(random2, results.getByte(1));
                     assertEquals(random2, results.getByte("test_byte"));
                     assertTrue(results.getObject(1) instanceof Byte);
-                    assertEquals((byte) 123, results.getByte(2));
+                    assertEquals(random3, results.getByte("test_keyword"));
                     
-                    assertTrue(results.next());
                     assertFalse(results.next());
                 }
             }
@@ -74,51 +77,27 @@ public class ResultSetTestCase extends JdbcIntegrationTestCase {
     }
     
     public void testGettingValidByteWithCasting() throws Exception {
-        byte random1 = randomByte();
-        byte random2 = randomValueOtherThan(random1, () -> randomByte());
-        createTestDataForByteValueTests(random1, random2);
-        //Map<String,Byte> map = createTestDataForValueTypesExcept(() -> randomByte(), "byte");
+        Map<String,Number> map = createTestDataForNumericValueTypes(() -> randomByte());
         
         try (Connection connection = esJdbc()) {
             try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM test")) {
                 try (ResultSet results = statement.executeQuery()) {
                     results.next();
-                    assertEquals(random1, results.getInt("test_byte"));
-                    assertEquals(random1, results.getLong("test_byte"));
-                    assertEquals(random1, results.getShort("test_byte"));
-                    assertEquals(Byte.toString(random1), results.getString("test_byte"));
-                    assertTrue(results.getObject("test_byte") instanceof Byte);
-                    
-                    assertTrue(results.next());
-                    assertTrue(results.next());
-                    assertEquals(true, results.getBoolean("test_byte"));
-                    assertEquals(false, results.getBoolean("test_null_byte"));
-                    assertEquals(Byte.MIN_VALUE, results.getByte("test_integer"));
-                    assertEquals(Byte.MAX_VALUE, results.getByte("test_long"));
-                    assertEquals(Byte.MIN_VALUE + 1, results.getByte("test_short"));
-                    assertEquals(Byte.MAX_VALUE - 1, results.getByte("test_double"));
-                    assertEquals(Byte.MIN_VALUE + 2, results.getByte("test_float"));
-                    assertEquals(Byte.MAX_VALUE - 2, results.getByte("test_half_float"));
-                    assertEquals(Byte.MIN_VALUE + 3, results.getByte("test_scaled_float"));
-                    assertEquals(Byte.MIN_VALUE + 3, results.getByte("test_scaled_float"));
-                    assertEquals(123, results.getByte("test_string"));
-                    /*map.entrySet().stream().forEach(entry -> {
-                        System.out.println(entry.getKey());
-                        try {
-                            assertEquals((Byte) entry.getValue(), (Byte) results.getByte(entry.getKey()));
-                        } catch (SQLException e) {
-                            throw new RuntimeException(e);
+                    for(Entry<String, Number> entry : map.entrySet()) {
+                        if (entry.getValue() instanceof Double) {
+                            assertEquals(Math.round(entry.getValue().doubleValue()), results.getByte(entry.getKey()));
+                        } else if (entry.getValue() instanceof Float) {
+                            assertEquals(Math.round(entry.getValue().floatValue()), results.getByte(entry.getKey()));
+                        } else {
+                            assertEquals(entry.getValue().byteValue(), results.getByte(entry.getKey()));
                         }
-                    });*/
-
-                    assertFalse(results.next());
+                    }
                 }
             }
         }
     }
-    
+
     public void testGettingInvalidByte() throws Exception {
-        String randomString = randomUnicodeOfCodepointLengthBetween(128, 256);
         createIndex("test");
         updateMapping("test", builder -> {
             builder.startObject("test_integer").field("type", "integer").endObject();
@@ -126,21 +105,24 @@ public class ResultSetTestCase extends JdbcIntegrationTestCase {
             builder.startObject("test_short").field("type", "short").endObject();
             builder.startObject("test_double").field("type", "double").endObject();
             builder.startObject("test_float").field("type", "float").endObject();
-            builder.startObject("test_half_float").field("type", "half_float").endObject();
-            builder.startObject("test_scaled_float").field("type", "scaled_float").field("scaling_factor", 1).endObject();
-            builder.startObject("test_string").field("type", "keyword").endObject();
+            builder.startObject("test_keyword").field("type", "keyword").endObject();
             builder.startObject("test_date").field("type", "date").endObject();
         });
         
+        int intNotByte = randomIntBetween(Byte.MAX_VALUE + 1, Integer.MAX_VALUE);
+        long longNotByte = randomLongBetween(Byte.MAX_VALUE + 1, Long.MAX_VALUE);
+        short shortNotByte = (short) randomIntBetween(Byte.MAX_VALUE + 1, Short.MAX_VALUE);
+        double doubleNotByte = (double) randomDoubleBetween(Byte.MAX_VALUE + 1, Double.MAX_VALUE, true);
+        float floatNotByte = (float) randomFloatBetween(Byte.MAX_VALUE + 1, Float.MAX_VALUE);
+        String randomString = randomUnicodeOfCodepointLengthBetween(128, 256);
+                
         index("test", "1", builder -> {
-            builder.field("test_integer", Integer.MAX_VALUE);
-            builder.field("test_long", Long.MIN_VALUE);
-            builder.field("test_short", Short.MAX_VALUE);
-            builder.field("test_double", Double.MAX_VALUE);
-            builder.field("test_float", Float.MAX_VALUE);
-            builder.field("test_half_float", 345.67f);
-            builder.field("test_scaled_float", Float.MAX_VALUE);
-            builder.field("test_string", randomString);
+            builder.field("test_integer", intNotByte);
+            builder.field("test_long", longNotByte);
+            builder.field("test_short", shortNotByte);
+            builder.field("test_double", doubleNotByte);
+            builder.field("test_float", floatNotByte);
+            builder.field("test_keyword", randomString);
             builder.field("test_date", new Date(randomMillisSinceEpoch()));
         });
         
@@ -150,24 +132,21 @@ public class ResultSetTestCase extends JdbcIntegrationTestCase {
                     results.next();
                     
                     SQLException sqle = expectThrows(SQLException.class, () -> results.getByte("test_integer"));
-                    assertEquals(format(Locale.ROOT, "Numeric %s out of range", Long.toString(Integer.MAX_VALUE)), sqle.getMessage());
+                    assertEquals(format(Locale.ROOT, "Numeric %s out of range", intNotByte), sqle.getMessage());
+                    
+                    sqle = expectThrows(SQLException.class, () -> results.getByte("test_short"));
+                    assertEquals(format(Locale.ROOT, "Numeric %s out of range", shortNotByte), sqle.getMessage());
                     
                     sqle = expectThrows(SQLException.class, () -> results.getByte("test_long"));
-                    assertEquals(format(Locale.ROOT, "Numeric %s out of range", Long.toString(Long.MIN_VALUE)), sqle.getMessage());
+                    assertEquals(format(Locale.ROOT, "Numeric %s out of range", Long.toString(longNotByte)), sqle.getMessage());
                     
                     sqle = expectThrows(SQLException.class, () -> results.getByte("test_double"));
-                    assertEquals(format(Locale.ROOT, "Numeric %s out of range", Double.toString(Double.MAX_VALUE)), sqle.getMessage());
+                    assertEquals(format(Locale.ROOT, "Numeric %s out of range", Double.toString(doubleNotByte)), sqle.getMessage());
                     
                     sqle = expectThrows(SQLException.class, () -> results.getByte("test_float"));
-                    assertEquals(format(Locale.ROOT, "Numeric %s out of range", Double.toString(Float.MAX_VALUE)), sqle.getMessage());
+                    assertEquals(format(Locale.ROOT, "Numeric %s out of range", Double.toString(floatNotByte)), sqle.getMessage());
                     
-                    sqle = expectThrows(SQLException.class, () -> results.getByte("test_half_float"));
-                    assertEquals("Numeric 346 out of range", sqle.getMessage());
-                    
-                    sqle = expectThrows(SQLException.class, () -> results.getByte("test_scaled_float"));
-                    assertEquals(format(Locale.ROOT, "Numeric 9223372036854775807 out of range"), sqle.getMessage());
-                    
-                    sqle = expectThrows(SQLException.class, () -> results.getByte("test_string"));
+                    sqle = expectThrows(SQLException.class, () -> results.getByte("test_keyword"));
                     assertEquals(format(Locale.ROOT, "Unable to convert value [%.128s] to a byte", randomString), sqle.getMessage());
                     
                     sqle = expectThrows(SQLException.class, () -> results.getByte("test_date"));
@@ -242,6 +221,50 @@ public class ResultSetTestCase extends JdbcIntegrationTestCase {
         }
     }
     
+    public void testGettingValidShortWithCasting2() throws Exception {
+        Map<String,Number> map = createTestDataForNumericValueTypes(() -> randomShort());
+        
+        try (Connection connection = esJdbc()) {
+            try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM test")) {
+                try (ResultSet results = statement.executeQuery()) {
+                    results.next();
+                    for(Entry<String, Number> entry : map.entrySet()) {
+                        System.out.println(entry.getKey() + " --- " + entry.getValue());
+                        if (entry.getValue() instanceof Double) {
+                            assertEquals(Math.round(entry.getValue().doubleValue()), results.getShort(entry.getKey()));
+                        } else if (entry.getValue() instanceof Float) {
+                            assertEquals(Math.round(entry.getValue().floatValue()), results.getShort(entry.getKey()));
+                        } else {
+                            assertEquals(entry.getValue().shortValue(), results.getShort(entry.getKey()));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    public void testGettingValidIntegerWithCasting2() throws Exception {
+        Map<String,Number> map = createTestDataForNumericValueTypes(() -> randomInt());
+        
+        try (Connection connection = esJdbc()) {
+            try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM test")) {
+                try (ResultSet results = statement.executeQuery()) {
+                    results.next();
+                    for(Entry<String, Number> entry : map.entrySet()) {
+                        System.out.println(entry.getKey() + " --- " + entry.getValue());
+                        if (entry.getValue() instanceof Double) {
+                            assertEquals(Math.round(entry.getValue().doubleValue()), results.getInt(entry.getKey()));
+                        } else if (entry.getValue() instanceof Float) {
+                            assertEquals(Math.round(entry.getValue().floatValue()), results.getInt(entry.getKey()));
+                        } else {
+                            assertEquals(entry.getValue().intValue(), results.getInt(entry.getKey()));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
     private void createIndex(String index) throws Exception {
         Request request = new Request("PUT", "/" + index);
         XContentBuilder createIndex = JsonXContent.contentBuilder().startObject();
@@ -279,19 +302,12 @@ public class ResultSetTestCase extends JdbcIntegrationTestCase {
         client().performRequest(request);
     }
     
-    private void createTestDataForByteValueTests(byte random1, byte random2) throws Exception, IOException {
+    private void createTestDataForByteValueTests(byte random1, byte random2, byte random3) throws Exception, IOException {
         createIndex("test");
         updateMapping("test", builder -> {
             builder.startObject("test_byte").field("type", "byte").endObject();
             builder.startObject("test_null_byte").field("type", "byte").endObject();
-            builder.startObject("test_integer").field("type", "integer").endObject();
-            builder.startObject("test_long").field("type", "long").endObject();
-            builder.startObject("test_short").field("type", "short").endObject();
-            builder.startObject("test_double").field("type", "double").endObject();
-            builder.startObject("test_float").field("type", "float").endObject();
-            builder.startObject("test_half_float").field("type", "half_float").endObject();
-            builder.startObject("test_scaled_float").field("type", "scaled_float").field("scaling_factor", 1).endObject();
-            builder.startObject("test_string").field("type", "keyword").endObject();
+            builder.startObject("test_keyword").field("type", "keyword").endObject();
         });
         
         index("test", "1", builder -> {
@@ -300,60 +316,63 @@ public class ResultSetTestCase extends JdbcIntegrationTestCase {
         });
         index("test", "2", builder -> {
             builder.field("test_byte", random2);
-            builder.field("test_null_byte", (byte) 123);
-        });
-        index("test", "3", builder -> {
-            builder.field("test_byte", (byte) 1);
-            builder.field("test_null_byte", (byte) 0);
-            builder.field("test_integer", Byte.MIN_VALUE);
-            builder.field("test_long", Byte.MAX_VALUE);
-            builder.field("test_short", Byte.MIN_VALUE + 1);
-            builder.field("test_double", Byte.MAX_VALUE - 1);
-            builder.field("test_float", Byte.MIN_VALUE + 2);
-            builder.field("test_half_float", Byte.MAX_VALUE - 2);
-            builder.field("test_scaled_float", Byte.MIN_VALUE + 3);
-            builder.field("test_string", "123");
+            builder.field("test_keyword", random3);
         });
     }
 
-    private <T> Map<String,T> createTestDataForValueTypesExcept(Supplier<T> randomGenerator, String excepted) throws Exception, IOException {
-        Map<String,T> map = new HashMap<String,T>();
+    private Map<String,Number> createTestDataForNumericValueTypes(Supplier<Number> randomGenerator) throws Exception, IOException {
+        Map<String,Number> map = new HashMap<String,Number>();
         createIndex("test");
         updateMapping("test", builder -> {
-            this.fieldsNames.stream().filter(field -> field != "test_scaled_float").forEach((field) -> {
-                try {
-                    builder.startObject(field).field("type", field.substring(5)).endObject();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            });
-            // scaled_float requires another attribute, so we treat it differently
-            builder.startObject("test_scaled_float").field("type", "scaled_float").field("scaling_factor", 1).endObject();
+            for(String field : fieldsNames) {
+                builder.startObject(field).field("type", field.substring(5)).endObject();
+            }
         });
-        
-        T random1 = randomGenerator.get();
-        
+
         index("test", "1", builder -> {
-            map.put("test_" + excepted, random1);
+            // random Byte
+            byte test_byte = randomValueOtherThanMany(map::containsValue, randomGenerator).byteValue();
+            builder.field("test_byte", test_byte);
+            map.put("test_byte", test_byte);
             
-            builder.field("test_" + excepted, randomGenerator.get());
-            builder.field("test_null_" + excepted, (T) null);
-        });
-        index("test", "2", builder -> {
-            this.fieldsNames.stream().forEach((field) -> {
-                T random = randomValueOtherThanMany(map::containsValue, randomGenerator);
-                try {
-                    builder.field(field, randomGenerator.get());
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-                map.put(field, random);
-            });
+            // random Integer
+            int test_integer = randomValueOtherThanMany(map::containsValue, randomGenerator).intValue();
+            builder.field("test_integer", test_integer);
+            map.put("test_integer", test_integer);
+
+            // random Short
+            int test_short = randomValueOtherThanMany(map::containsValue, randomGenerator).shortValue();
+            builder.field("test_short", test_short);
+            map.put("test_short", test_short);
+            
+            // random Long
+            long test_long = randomValueOtherThanMany(map::containsValue, randomGenerator).longValue();
+            builder.field("test_long", test_long);
+            map.put("test_long", test_long);
+            
+            // random Double
+            double test_double = randomValueOtherThanMany(map::containsValue, randomGenerator).doubleValue();
+            builder.field("test_double", test_double);
+            map.put("test_double", test_double);
+            
+            // random Float
+            float test_float = randomValueOtherThanMany(map::containsValue, randomGenerator).floatValue();
+            builder.field("test_float", test_float);
+            map.put("test_float", test_float);
         });
         return map;
     }
     
     private long randomMillisSinceEpoch() {
         return randomLongBetween(0, System.currentTimeMillis());
+    }
+    
+    private float randomFloatBetween(float start, float end) {
+        float result = 0.0f;
+        while (result < start || result > end || Float.isNaN(result)) {
+            result = randomFloat();
+        }
+        
+        return result;
     }
 }
