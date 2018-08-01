@@ -39,6 +39,7 @@ public class ResultSetTestCase extends JdbcIntegrationTestCase {
             "test_float", "test_keyword")
             .collect(Collectors.toCollection(HashSet::new));
     
+    // Byte values testing
     public void testGettingValidByteWithoutCasting() throws Exception {
         byte random1 = randomByte();
         byte random2 = randomValueOtherThan(random1, () -> randomByte());
@@ -99,12 +100,8 @@ public class ResultSetTestCase extends JdbcIntegrationTestCase {
 
     public void testGettingInvalidByte() throws Exception {
         createIndex("test");
+        updateMappingForNumericValuesTests("test");
         updateMapping("test", builder -> {
-            builder.startObject("test_integer").field("type", "integer").endObject();
-            builder.startObject("test_long").field("type", "long").endObject();
-            builder.startObject("test_short").field("type", "short").endObject();
-            builder.startObject("test_double").field("type", "double").endObject();
-            builder.startObject("test_float").field("type", "float").endObject();
             builder.startObject("test_keyword").field("type", "keyword").endObject();
             builder.startObject("test_date").field("type", "date").endObject();
         });
@@ -151,6 +148,406 @@ public class ResultSetTestCase extends JdbcIntegrationTestCase {
                     
                     sqle = expectThrows(SQLException.class, () -> results.getByte("test_date"));
                     assertEquals("Conversion from type [TIMESTAMP] to [Byte] not supported", sqle.getMessage());
+                }
+            }
+        }
+    }
+    
+    // Short values testing
+    public void testGettingValidShortWithoutCasting() throws Exception {
+        short random1 = randomShort();
+        short random2 = randomValueOtherThan(random1, () -> randomShort());
+        short random3 = randomValueOtherThanMany(Arrays.asList(random1, random2)::contains, () -> randomShort());
+        
+        createTestDataForShortValueTests(random1, random2, random3);
+        
+        try (Connection connection = esJdbc()) {
+            try (PreparedStatement statement = connection.prepareStatement("SELECT test_short, test_null_short, test_keyword FROM test")) {
+                try (ResultSet results = statement.executeQuery()) {
+                    ResultSetMetaData resultSetMetaData = results.getMetaData();
+
+                    results.next();
+                    assertEquals(3, resultSetMetaData.getColumnCount());
+                    assertEquals(Types.SMALLINT, resultSetMetaData.getColumnType(1));
+                    assertEquals(Types.SMALLINT, resultSetMetaData.getColumnType(2));
+                    assertEquals(random1, results.getShort(1));
+                    assertEquals(random1, results.getShort("test_short"));
+                    assertTrue(results.getObject(1) instanceof Short);
+                    
+                    assertEquals(0, results.getShort(2));
+                    assertTrue(results.wasNull());
+                    assertEquals(null, results.getObject("test_null_short"));
+                    assertTrue(results.wasNull());
+                    
+                    assertTrue(results.next());
+                    assertEquals(random2, results.getShort(1));
+                    assertEquals(random2, results.getShort("test_short"));
+                    assertTrue(results.getObject(1) instanceof Short);
+                    assertEquals(random3, results.getShort("test_keyword"));
+                    
+                    assertFalse(results.next());
+                }
+            }
+        }
+    }
+    
+    public void testGettingValidShortWithCasting() throws Exception {
+        Map<String,Number> map = createTestDataForNumericValueTypes(() -> randomShort());
+        
+        try (Connection connection = esJdbc()) {
+            try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM test")) {
+                try (ResultSet results = statement.executeQuery()) {
+                    results.next();
+                    for(Entry<String, Number> entry : map.entrySet()) {
+                        if (entry.getValue() instanceof Double) {
+                            assertEquals(Math.round(entry.getValue().doubleValue()), results.getShort(entry.getKey()));
+                        } else if (entry.getValue() instanceof Float) {
+                            assertEquals(Math.round(entry.getValue().floatValue()), results.getShort(entry.getKey()));
+                        } else {
+                            assertEquals(entry.getValue().shortValue(), results.getShort(entry.getKey()));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    public void testGettingInvalidShort() throws Exception {
+        createIndex("test");
+        updateMappingForNumericValuesTests("test");
+        updateMapping("test", builder -> {
+            builder.startObject("test_keyword").field("type", "keyword").endObject();
+            builder.startObject("test_date").field("type", "date").endObject();
+        });
+        
+        int intNotShort = randomIntBetween(Short.MAX_VALUE + 1, Integer.MAX_VALUE);
+        long longNotShort = randomLongBetween(Short.MAX_VALUE + 1, Long.MAX_VALUE);
+        double doubleNotShort = (double) randomDoubleBetween(Short.MAX_VALUE + 1, Double.MAX_VALUE, true);
+        float floatNotShort = (float) randomFloatBetween(Short.MAX_VALUE + 1, Float.MAX_VALUE);
+        String randomString = randomUnicodeOfCodepointLengthBetween(128, 256);
+
+        index("test", "1", builder -> {
+            builder.field("test_integer", intNotShort);
+            builder.field("test_long", longNotShort);
+            builder.field("test_double", doubleNotShort);
+            builder.field("test_float", floatNotShort);
+            builder.field("test_keyword", randomString);
+            builder.field("test_date", new Date(randomMillisSinceEpoch()));
+        });
+        
+        try (Connection connection = esJdbc()) {
+            try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM test")) {
+                try (ResultSet results = statement.executeQuery()) {
+                    results.next();
+                    
+                    SQLException sqle = expectThrows(SQLException.class, () -> results.getShort("test_integer"));
+                    assertEquals(format(Locale.ROOT, "Numeric %s out of range", intNotShort), sqle.getMessage());
+                    
+                    sqle = expectThrows(SQLException.class, () -> results.getShort("test_long"));
+                    assertEquals(format(Locale.ROOT, "Numeric %s out of range", Long.toString(longNotShort)), sqle.getMessage());
+                    
+                    sqle = expectThrows(SQLException.class, () -> results.getShort("test_double"));
+                    assertEquals(format(Locale.ROOT, "Numeric %s out of range", Double.toString(doubleNotShort)), sqle.getMessage());
+                    
+                    sqle = expectThrows(SQLException.class, () -> results.getShort("test_float"));
+                    assertEquals(format(Locale.ROOT, "Numeric %s out of range", Double.toString(floatNotShort)), sqle.getMessage());
+                    
+                    sqle = expectThrows(SQLException.class, () -> results.getShort("test_keyword"));
+                    assertEquals(format(Locale.ROOT, "Unable to convert value [%.128s] to a short", randomString), sqle.getMessage());
+                    
+                    sqle = expectThrows(SQLException.class, () -> results.getShort("test_date"));
+                    assertEquals("Conversion from type [TIMESTAMP] to [Short] not supported", sqle.getMessage());
+                }
+            }
+        }
+    }
+    
+    // Integer values testing
+    public void testGettingValidIntegerWithoutCasting() throws Exception {
+        int random1 = randomInt();
+        int random2 = randomValueOtherThan(random1, () -> randomInt());
+        int random3 = randomValueOtherThanMany(Arrays.asList(random1, random2)::contains, () -> randomInt());
+        
+        createTestDataForIntegerValueTests(random1, random2, random3);
+        
+        try (Connection connection = esJdbc()) {
+            try (PreparedStatement statement = connection.prepareStatement("SELECT test_integer, test_null_integer, test_keyword FROM test")) {
+                try (ResultSet results = statement.executeQuery()) {
+                    ResultSetMetaData resultSetMetaData = results.getMetaData();
+
+                    results.next();
+                    assertEquals(3, resultSetMetaData.getColumnCount());
+                    assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(1));
+                    assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(2));
+                    assertEquals(random1, results.getInt(1));
+                    assertEquals(random1, results.getInt("test_integer"));
+                    assertTrue(results.getObject(1) instanceof Integer);
+                    
+                    assertEquals(0, results.getInt(2));
+                    assertTrue(results.wasNull());
+                    assertEquals(null, results.getObject("test_null_integer"));
+                    assertTrue(results.wasNull());
+                    
+                    assertTrue(results.next());
+                    assertEquals(random2, results.getInt(1));
+                    assertEquals(random2, results.getInt("test_integer"));
+                    assertTrue(results.getObject(1) instanceof Integer);
+                    assertEquals(random3, results.getInt("test_keyword"));
+                    
+                    assertFalse(results.next());
+                }
+            }
+        }
+    }
+    
+    public void testGettingValidIntegerWithCasting() throws Exception {
+        Map<String,Number> map = createTestDataForNumericValueTypes(() -> randomInt());
+        
+        try (Connection connection = esJdbc()) {
+            try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM test")) {
+                try (ResultSet results = statement.executeQuery()) {
+                    results.next();
+                    for(Entry<String, Number> entry : map.entrySet()) {
+                        if (entry.getValue() instanceof Double) {
+                            assertEquals(Math.round(entry.getValue().doubleValue()), results.getInt(entry.getKey()));
+                        } else if (entry.getValue() instanceof Float) {
+                            assertEquals(Math.round(entry.getValue().floatValue()), results.getInt(entry.getKey()));
+                        } else {
+                            assertEquals(entry.getValue().intValue(), results.getInt(entry.getKey()));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    public void testGettingInvalidInteger() throws Exception {
+        createIndex("test");
+        updateMappingForNumericValuesTests("test");
+        updateMapping("test", builder -> {
+            builder.startObject("test_keyword").field("type", "keyword").endObject();
+            builder.startObject("test_date").field("type", "date").endObject();
+        });
+        
+        long longNotInt = randomLongBetween(getMaxIntPlusOne(), Long.MAX_VALUE);
+        double doubleNotInt = (double) randomDoubleBetween(getMaxIntPlusOne().doubleValue(), Double.MAX_VALUE, true);
+        float floatNotInt = (float) randomFloatBetween(getMaxIntPlusOne().floatValue(), Float.MAX_VALUE);
+        String randomString = randomUnicodeOfCodepointLengthBetween(128, 256);
+
+        index("test", "1", builder -> {
+            builder.field("test_long", longNotInt);
+            builder.field("test_double", doubleNotInt);
+            builder.field("test_float", floatNotInt);
+            builder.field("test_keyword", randomString);
+            builder.field("test_date", new Date(randomMillisSinceEpoch()));
+        });
+        
+        System.out.println("long = " + longNotInt);
+        System.out.println("double = " + doubleNotInt);
+        System.out.println("float = " + floatNotInt);
+        System.out.println("keyword = " + randomString);
+        
+        try (Connection connection = esJdbc()) {
+            try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM test")) {
+                try (ResultSet results = statement.executeQuery()) {
+                    results.next();
+                    
+                    SQLException sqle = expectThrows(SQLException.class, () -> results.getInt("test_long"));
+                    assertEquals(format(Locale.ROOT, "Numeric %s out of range", Long.toString(longNotInt)), sqle.getMessage());
+                    
+                    sqle = expectThrows(SQLException.class, () -> results.getInt("test_double"));
+                    assertEquals(format(Locale.ROOT, "Numeric %s out of range", Double.toString(doubleNotInt)), sqle.getMessage());
+                    
+                    sqle = expectThrows(SQLException.class, () -> results.getInt("test_float"));
+                    assertEquals(format(Locale.ROOT, "Numeric %s out of range", Double.toString(floatNotInt)), sqle.getMessage());
+                    
+                    sqle = expectThrows(SQLException.class, () -> results.getInt("test_keyword"));
+                    assertEquals(format(Locale.ROOT, "Unable to convert value [%.128s] to an integer", randomString), sqle.getMessage());
+                    
+                    sqle = expectThrows(SQLException.class, () -> results.getInt("test_date"));
+                    assertEquals("Conversion from type [TIMESTAMP] to [Integer] not supported", sqle.getMessage());
+                }
+            }
+        }
+    }
+    
+    // Long values testing
+    public void testGettingValidLongWithoutCasting() throws Exception {
+        long random1 = randomLong();
+        long random2 = randomValueOtherThan(random1, () -> randomLong());
+        long random3 = randomValueOtherThanMany(Arrays.asList(random1, random2)::contains, () -> randomLong());
+        
+        createTestDataForLongValueTests(random1, random2, random3);
+        
+        try (Connection connection = esJdbc()) {
+            try (PreparedStatement statement = connection.prepareStatement("SELECT test_long, test_null_long, test_keyword FROM test")) {
+                try (ResultSet results = statement.executeQuery()) {
+                    ResultSetMetaData resultSetMetaData = results.getMetaData();
+
+                    results.next();
+                    assertEquals(3, resultSetMetaData.getColumnCount());
+                    assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(1));
+                    assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(2));
+                    assertEquals(random1, results.getLong(1));
+                    assertEquals(random1, results.getLong("test_long"));
+                    assertTrue(results.getObject(1) instanceof Long);
+                    
+                    assertEquals(0, results.getLong(2));
+                    assertTrue(results.wasNull());
+                    assertEquals(null, results.getObject("test_null_long"));
+                    assertTrue(results.wasNull());
+                    
+                    assertTrue(results.next());
+                    assertEquals(random2, results.getLong(1));
+                    assertEquals(random2, results.getLong("test_integer"));
+                    assertTrue(results.getObject(1) instanceof Long);
+                    assertEquals(random3, results.getLong("test_keyword"));
+                    
+                    assertFalse(results.next());
+                }
+            }
+        }
+    }
+    
+    public void testGettingValidLongWithCasting() throws Exception {
+        Map<String,Number> map = createTestDataForNumericValueTypes(() -> randomLong());
+        
+        try (Connection connection = esJdbc()) {
+            try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM test")) {
+                try (ResultSet results = statement.executeQuery()) {
+                    results.next();
+                    for(Entry<String, Number> entry : map.entrySet()) {
+                        if (entry.getValue() instanceof Double) {
+                            assertEquals(Math.round(entry.getValue().doubleValue()), results.getLong(entry.getKey()));
+                        } else if (entry.getValue() instanceof Float) {
+                            assertEquals(Math.round(entry.getValue().floatValue()), results.getLong(entry.getKey()));
+                        } else {
+                            assertEquals(entry.getValue().longValue(), results.getLong(entry.getKey()));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    public void testGettingInvalidLong() throws Exception {
+        createIndex("test");
+        updateMappingForNumericValuesTests("test");
+        updateMapping("test", builder -> {
+            builder.startObject("test_keyword").field("type", "keyword").endObject();
+            builder.startObject("test_date").field("type", "date").endObject();
+        });
+        
+        double doubleNotLong = (double) randomDoubleBetween(getMaxLongPlusOne().doubleValue(), Double.MAX_VALUE, true);
+        float floatNotLong = (float) randomFloatBetween(getMaxLongPlusOne().floatValue(), Float.MAX_VALUE);
+        String randomString = randomUnicodeOfCodepointLengthBetween(128, 256);
+
+        index("test", "1", builder -> {
+            builder.field("test_double", doubleNotLong);
+            builder.field("test_float", floatNotLong);
+            builder.field("test_keyword", randomString);
+            builder.field("test_date", new Date(randomMillisSinceEpoch()));
+        });
+        
+        try (Connection connection = esJdbc()) {
+            try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM test")) {
+                try (ResultSet results = statement.executeQuery()) {
+                    results.next();
+                    
+                    SQLException sqle = expectThrows(SQLException.class, () -> results.getLong("test_double"));
+                    assertEquals(format(Locale.ROOT, "Numeric %s out of range", Double.toString(doubleNotLong)), sqle.getMessage());
+                    
+                    sqle = expectThrows(SQLException.class, () -> results.getLong("test_float"));
+                    assertEquals(format(Locale.ROOT, "Numeric %s out of range", Double.toString(floatNotLong)), sqle.getMessage());
+                    
+                    sqle = expectThrows(SQLException.class, () -> results.getLong("test_keyword"));
+                    assertEquals(format(Locale.ROOT, "Unable to convert value [%.128s] to a long", randomString), sqle.getMessage());
+                    
+                    sqle = expectThrows(SQLException.class, () -> results.getLong("test_date"));
+                    assertEquals("Conversion from type [TIMESTAMP] to [Long] not supported", sqle.getMessage());
+                }
+            }
+        }
+    }
+    
+    // Double values testing
+    public void testGettingValidDoubleWithoutCasting() throws Exception {
+        double random1 = randomDouble();
+        double random2 = randomValueOtherThan(random1, () -> randomDouble());
+        double random3 = randomValueOtherThanMany(Arrays.asList(random1, random2)::contains, () -> randomDouble());
+        
+        createTestDataForDoubleValueTests(random1, random2, random3);
+        
+        try (Connection connection = esJdbc()) {
+            try (PreparedStatement statement = connection.prepareStatement("SELECT test_double, test_null_double, test_keyword FROM test")) {
+                try (ResultSet results = statement.executeQuery()) {
+                    ResultSetMetaData resultSetMetaData = results.getMetaData();
+
+                    results.next();
+                    assertEquals(3, resultSetMetaData.getColumnCount());
+                    assertEquals(Types.DOUBLE, resultSetMetaData.getColumnType(1));
+                    assertEquals(Types.DOUBLE, resultSetMetaData.getColumnType(2));
+                    assertEquals(random1, results.getDouble(1), 0.0d);
+                    assertEquals(random1, results.getDouble("test_double"), 0.0d);
+                    assertTrue(results.getObject(1) instanceof Double);
+                    
+                    assertEquals(0, results.getDouble(2), 0.0d);
+                    assertTrue(results.wasNull());
+                    assertEquals(null, results.getObject("test_null_double"));
+                    assertTrue(results.wasNull());
+                    
+                    assertTrue(results.next());
+                    assertEquals(random2, results.getDouble(1), 0.0d);
+                    assertEquals(random2, results.getDouble("test_double"), 0.0d);
+                    assertTrue(results.getObject(1) instanceof Double);
+                    assertEquals(random3, results.getDouble("test_keyword"), 0.0d);
+                    
+                    assertFalse(results.next());
+                }
+            }
+        }
+    }
+    
+    public void testGettingValidDoubleWithCasting() throws Exception {
+        Map<String,Number> map = createTestDataForNumericValueTypes(() -> randomDouble());
+        
+        try (Connection connection = esJdbc()) {
+            try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM test")) {
+                try (ResultSet results = statement.executeQuery()) {
+                    results.next();
+                    for(Entry<String, Number> entry : map.entrySet()) {
+                        assertEquals(entry.getValue().doubleValue(), results.getDouble(entry.getKey()), 0.0d);
+                    }
+                }
+            }
+        }
+    }
+
+    public void testGettingInvalidDouble() throws Exception {
+        createIndex("test");
+        updateMappingForNumericValuesTests("test");
+        updateMapping("test", builder -> {
+            builder.startObject("test_keyword").field("type", "keyword").endObject();
+            builder.startObject("test_date").field("type", "date").endObject();
+        });
+        
+        String randomString = randomUnicodeOfCodepointLengthBetween(128, 256);
+
+        index("test", "1", builder -> {
+            builder.field("test_keyword", randomString);
+            builder.field("test_date", new Date(randomMillisSinceEpoch()));
+        });
+        
+        try (Connection connection = esJdbc()) {
+            try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM test")) {
+                try (ResultSet results = statement.executeQuery()) {
+                    results.next();
+                    
+                    SQLException sqle = expectThrows(SQLException.class, () -> results.getDouble("test_keyword"));
+                    assertEquals(format(Locale.ROOT, "Unable to convert value [%.128s] to a double", randomString), sqle.getMessage());
+                    
+                    sqle = expectThrows(SQLException.class, () -> results.getDouble("test_date"));
+                    assertEquals("Conversion from type [TIMESTAMP] to [Double] not supported", sqle.getMessage());
                 }
             }
         }
@@ -221,50 +618,6 @@ public class ResultSetTestCase extends JdbcIntegrationTestCase {
         }
     }
     
-    public void testGettingValidShortWithCasting2() throws Exception {
-        Map<String,Number> map = createTestDataForNumericValueTypes(() -> randomShort());
-        
-        try (Connection connection = esJdbc()) {
-            try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM test")) {
-                try (ResultSet results = statement.executeQuery()) {
-                    results.next();
-                    for(Entry<String, Number> entry : map.entrySet()) {
-                        System.out.println(entry.getKey() + " --- " + entry.getValue());
-                        if (entry.getValue() instanceof Double) {
-                            assertEquals(Math.round(entry.getValue().doubleValue()), results.getShort(entry.getKey()));
-                        } else if (entry.getValue() instanceof Float) {
-                            assertEquals(Math.round(entry.getValue().floatValue()), results.getShort(entry.getKey()));
-                        } else {
-                            assertEquals(entry.getValue().shortValue(), results.getShort(entry.getKey()));
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    public void testGettingValidIntegerWithCasting2() throws Exception {
-        Map<String,Number> map = createTestDataForNumericValueTypes(() -> randomInt());
-        
-        try (Connection connection = esJdbc()) {
-            try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM test")) {
-                try (ResultSet results = statement.executeQuery()) {
-                    results.next();
-                    for(Entry<String, Number> entry : map.entrySet()) {
-                        System.out.println(entry.getKey() + " --- " + entry.getValue());
-                        if (entry.getValue() instanceof Double) {
-                            assertEquals(Math.round(entry.getValue().doubleValue()), results.getInt(entry.getKey()));
-                        } else if (entry.getValue() instanceof Float) {
-                            assertEquals(Math.round(entry.getValue().floatValue()), results.getInt(entry.getKey()));
-                        } else {
-                            assertEquals(entry.getValue().intValue(), results.getInt(entry.getKey()));
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
     private void createIndex(String index) throws Exception {
         Request request = new Request("PUT", "/" + index);
         XContentBuilder createIndex = JsonXContent.contentBuilder().startObject();
@@ -319,15 +672,83 @@ public class ResultSetTestCase extends JdbcIntegrationTestCase {
             builder.field("test_keyword", random3);
         });
     }
+    
+    private void createTestDataForShortValueTests(short random1, short random2, short random3) throws Exception, IOException {
+        createIndex("test");
+        updateMapping("test", builder -> {
+            builder.startObject("test_short").field("type", "short").endObject();
+            builder.startObject("test_null_short").field("type", "short").endObject();
+            builder.startObject("test_keyword").field("type", "keyword").endObject();
+        });
+        
+        index("test", "1", builder -> {
+            builder.field("test_short", random1);
+            builder.field("test_null_short", (Short) null);
+        });
+        index("test", "2", builder -> {
+            builder.field("test_short", random2);
+            builder.field("test_keyword", random3);
+        });
+    }
+    
+    private void createTestDataForIntegerValueTests(int random1, int random2, int random3) throws Exception, IOException {
+        createIndex("test");
+        updateMapping("test", builder -> {
+            builder.startObject("test_integer").field("type", "integer").endObject();
+            builder.startObject("test_null_integer").field("type", "integer").endObject();
+            builder.startObject("test_keyword").field("type", "keyword").endObject();
+        });
+        
+        index("test", "1", builder -> {
+            builder.field("test_integer", random1);
+            builder.field("test_null_integer", (Integer) null);
+        });
+        index("test", "2", builder -> {
+            builder.field("test_integer", random2);
+            builder.field("test_keyword", random3);
+        });
+    }
+    
+    private void createTestDataForLongValueTests(long random1, long random2, long random3) throws Exception, IOException {
+        createIndex("test");
+        updateMapping("test", builder -> {
+            builder.startObject("test_long").field("type", "long").endObject();
+            builder.startObject("test_null_long").field("type", "long").endObject();
+            builder.startObject("test_keyword").field("type", "keyword").endObject();
+        });
+        
+        index("test", "1", builder -> {
+            builder.field("test_long", random1);
+            builder.field("test_null_long", (Long) null);
+        });
+        index("test", "2", builder -> {
+            builder.field("test_long", random2);
+            builder.field("test_keyword", random3);
+        });
+    }
+    
+    private void createTestDataForDoubleValueTests(double random1, double random2, double random3) throws Exception, IOException {
+        createIndex("test");
+        updateMapping("test", builder -> {
+            builder.startObject("test_double").field("type", "double").endObject();
+            builder.startObject("test_null_double").field("type", "double").endObject();
+            builder.startObject("test_keyword").field("type", "keyword").endObject();
+        });
+        
+        index("test", "1", builder -> {
+            builder.field("test_double", random1);
+            builder.field("test_null_integer", (Double) null);
+        });
+        index("test", "2", builder -> {
+            builder.field("test_double", random2);
+            builder.field("test_keyword", random3);
+        });
+    }
 
     private Map<String,Number> createTestDataForNumericValueTypes(Supplier<Number> randomGenerator) throws Exception, IOException {
         Map<String,Number> map = new HashMap<String,Number>();
         createIndex("test");
-        updateMapping("test", builder -> {
-            for(String field : fieldsNames) {
-                builder.startObject(field).field("type", field.substring(5)).endObject();
-            }
-        });
+        updateMappingForNumericValuesTests("test");
 
         index("test", "1", builder -> {
             // random Byte
@@ -362,6 +783,14 @@ public class ResultSetTestCase extends JdbcIntegrationTestCase {
         });
         return map;
     }
+
+    private void updateMappingForNumericValuesTests(String indexName) throws Exception {
+        updateMapping(indexName, builder -> {
+            for(String field : fieldsNames) {
+                builder.startObject(field).field("type", field.substring(5)).endObject();
+            }
+        });
+    }
     
     private long randomMillisSinceEpoch() {
         return randomLongBetween(0, System.currentTimeMillis());
@@ -370,9 +799,17 @@ public class ResultSetTestCase extends JdbcIntegrationTestCase {
     private float randomFloatBetween(float start, float end) {
         float result = 0.0f;
         while (result < start || result > end || Float.isNaN(result)) {
-            result = randomFloat();
+            result = start + randomFloat() * (end - start);
         }
         
         return result;
+    }
+    
+    private Long getMaxIntPlusOne() {
+        return Long.valueOf(Integer.MAX_VALUE) + 1L;
+    }
+    
+    private Double getMaxLongPlusOne() {
+        return Double.valueOf(Long.MAX_VALUE) + 1d;
     }
 }

@@ -380,6 +380,12 @@ final class TypeConverter {
             case FLOAT:
             case DOUBLE:
                 return safeToShort(safeToLong(((Number) val).doubleValue()));
+            case VARCHAR:
+                try {
+                    return Short.valueOf((String) val);
+                } catch (NumberFormatException e) {
+                    throw new SQLException(format(Locale.ROOT, "Unable to convert value [%.128s] to a short", val), e);
+                }
             default:
         }
 
@@ -399,6 +405,12 @@ final class TypeConverter {
             case FLOAT:
             case DOUBLE:
                 return safeToInt(safeToLong(((Number) val).doubleValue()));
+            case VARCHAR:
+                try {
+                    return Integer.valueOf((String) val);
+                } catch (NumberFormatException e) {
+                    throw new SQLException(format(Locale.ROOT, "Unable to convert value [%.128s] to an integer", val), e);
+                }
             default:
         }
 
@@ -458,6 +470,12 @@ final class TypeConverter {
             case FLOAT:
             case DOUBLE:
                 return new Double(((Number) val).doubleValue());
+            case VARCHAR:
+                try {
+                    return Double.valueOf((String) val);
+                } catch (NumberFormatException e) {
+                    throw new SQLException(format(Locale.ROOT, "Unable to convert value [%.128s] to a double", val), e);
+                }
             default:
         }
 

@@ -143,22 +143,12 @@ class JdbcResultSet implements ResultSet, JdbcWrapper {
 
     @Override
     public short getShort(int columnIndex) throws SQLException {
-        Object val = column(columnIndex);
-        try {
-            return val != null ? ((Number) val).shortValue() : 0;
-        } catch (ClassCastException cce) {
-            throw new SQLException("unable to convert column " + columnIndex + " to a short", cce);
-        }
+        return column(columnIndex) != null ? getObject(columnIndex, Short.class) : 0;
     }
 
     @Override
     public int getInt(int columnIndex) throws SQLException {
-        Object val = column(columnIndex);
-        try {
-            return val != null ? ((Number) val).intValue() : 0;
-        } catch (ClassCastException cce) {
-            throw new SQLException("unable to convert column " + columnIndex + " to an int", cce);
-        }
+        return column(columnIndex) != null ? getObject(columnIndex, Integer.class) : 0;
     }
 
     @Override
@@ -183,12 +173,7 @@ class JdbcResultSet implements ResultSet, JdbcWrapper {
 
     @Override
     public double getDouble(int columnIndex) throws SQLException {
-        Object val = column(columnIndex);
-        try {
-            return val != null ? ((Number) val).doubleValue() : 0;
-        } catch (ClassCastException cce) {
-            throw new SQLException("unable to convert column " + columnIndex + " to a double", cce);
-        }
+        return column(columnIndex) != null ? getObject(columnIndex, Double.class) : 0;
     }
 
     @Override
