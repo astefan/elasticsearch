@@ -143,7 +143,10 @@ final class TypeConverter {
             return (T) convert(val, columnType);
         }
         
-        if (type.isInstance(val)) {
+        // converting a Long to a Timestamp shouldn't be possible according to the spec,
+        // it feels a little brittle to check this scenario here and I don't particularly like it
+        // TODO: can we do any better or should we go over the spec and allow getLong(date) to be valid?
+        if (!(type == Long.class && columnType == JDBCType.TIMESTAMP) && type.isInstance(val)) {
             try {
                 return type.cast(val);
             } catch (ClassCastException cce) {
@@ -359,7 +362,7 @@ final class TypeConverter {
                 try {
                     return Byte.valueOf((String) val);
                 } catch (NumberFormatException e) {
-                    throw new SQLException(format(Locale.ROOT, "Unable to convert value [%.128s] to a byte", val), e);
+                    throw new SQLException(format(Locale.ROOT, "Unable to convert value [%.128s] to a Byte", val), e);
                 }
             default:
         }
@@ -384,7 +387,7 @@ final class TypeConverter {
                 try {
                     return Short.valueOf((String) val);
                 } catch (NumberFormatException e) {
-                    throw new SQLException(format(Locale.ROOT, "Unable to convert value [%.128s] to a short", val), e);
+                    throw new SQLException(format(Locale.ROOT, "Unable to convert value [%.128s] to a Short", val), e);
                 }
             default:
         }
@@ -409,7 +412,7 @@ final class TypeConverter {
                 try {
                     return Integer.valueOf((String) val);
                 } catch (NumberFormatException e) {
-                    throw new SQLException(format(Locale.ROOT, "Unable to convert value [%.128s] to an integer", val), e);
+                    throw new SQLException(format(Locale.ROOT, "Unable to convert value [%.128s] to an Integer", val), e);
                 }
             default:
         }
@@ -430,8 +433,17 @@ final class TypeConverter {
             case FLOAT:
             case DOUBLE:
                 return safeToLong(((Number) val).doubleValue());
-            case TIMESTAMP:
-                return ((Number) val).longValue();
+            //TODO: should we support conversion to TIMESTAMP?
+            //The spec says that getLong() should support the following types conversions:
+            //TINYINT, SMALLINT, INTEGER, BIGINT, REAL, FLOAT, DOUBLE, DECIMAL, NUMERIC, BIT, BOOLEAN, CHAR, VARCHAR, LONGVARCHAR
+            //case TIMESTAMP:
+            //    return ((Number) val).longValue();
+            case VARCHAR:
+                try {
+                    return Long.valueOf((String) val);
+                } catch (NumberFormatException e) {
+                    throw new SQLException(format(Locale.ROOT, "Unable to convert value [%.128s] to a Long", val), e);
+                }
             default:
         }
 
@@ -451,6 +463,12 @@ final class TypeConverter {
             case FLOAT:
             case DOUBLE:
                 return new Float(((Number) val).doubleValue());
+            case VARCHAR:
+                try {
+                    return Float.valueOf((String) val);
+                } catch (NumberFormatException e) {
+                    throw new SQLException(format(Locale.ROOT, "Unable to convert value [%.128s] to a Float", val), e);
+                }
             default:
         }
 
@@ -474,7 +492,7 @@ final class TypeConverter {
                 try {
                     return Double.valueOf((String) val);
                 } catch (NumberFormatException e) {
-                    throw new SQLException(format(Locale.ROOT, "Unable to convert value [%.128s] to a double", val), e);
+                    throw new SQLException(format(Locale.ROOT, "Unable to convert value [%.128s] to a Double", val), e);
                 }
             default:
         }

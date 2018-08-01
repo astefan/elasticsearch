@@ -153,22 +153,12 @@ class JdbcResultSet implements ResultSet, JdbcWrapper {
 
     @Override
     public long getLong(int columnIndex) throws SQLException {
-        Object val = column(columnIndex);
-        try {
-            return val != null ? ((Number) val).longValue() : 0;
-        } catch (ClassCastException cce) {
-            throw new SQLException("unable to convert column " + columnIndex + " to a long", cce);
-        }
+        return column(columnIndex) != null ? getObject(columnIndex, Long.class) : 0;
     }
 
     @Override
     public float getFloat(int columnIndex) throws SQLException {
-        Object val = column(columnIndex);
-        try {
-            return val != null ? ((Number) val).floatValue() : 0;
-        } catch (ClassCastException cce) {
-            throw new SQLException("unable to convert column " + columnIndex + " to a float", cce);
-        }
+        return column(columnIndex) != null ? getObject(columnIndex, Float.class) : 0;
     }
 
     @Override

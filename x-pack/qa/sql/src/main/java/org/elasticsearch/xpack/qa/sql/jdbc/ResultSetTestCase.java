@@ -12,11 +12,17 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.Reader;
+import java.sql.Blob;
+import java.sql.Clob;
 import java.sql.Connection;
+import java.sql.NClob;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.Arrays;
@@ -144,7 +150,7 @@ public class ResultSetTestCase extends JdbcIntegrationTestCase {
                     assertEquals(format(Locale.ROOT, "Numeric %s out of range", Double.toString(floatNotByte)), sqle.getMessage());
                     
                     sqle = expectThrows(SQLException.class, () -> results.getByte("test_keyword"));
-                    assertEquals(format(Locale.ROOT, "Unable to convert value [%.128s] to a byte", randomString), sqle.getMessage());
+                    assertEquals(format(Locale.ROOT, "Unable to convert value [%.128s] to a Byte", randomString), sqle.getMessage());
                     
                     sqle = expectThrows(SQLException.class, () -> results.getByte("test_date"));
                     assertEquals("Conversion from type [TIMESTAMP] to [Byte] not supported", sqle.getMessage());
@@ -253,7 +259,7 @@ public class ResultSetTestCase extends JdbcIntegrationTestCase {
                     assertEquals(format(Locale.ROOT, "Numeric %s out of range", Double.toString(floatNotShort)), sqle.getMessage());
                     
                     sqle = expectThrows(SQLException.class, () -> results.getShort("test_keyword"));
-                    assertEquals(format(Locale.ROOT, "Unable to convert value [%.128s] to a short", randomString), sqle.getMessage());
+                    assertEquals(format(Locale.ROOT, "Unable to convert value [%.128s] to a Short", randomString), sqle.getMessage());
                     
                     sqle = expectThrows(SQLException.class, () -> results.getShort("test_date"));
                     assertEquals("Conversion from type [TIMESTAMP] to [Short] not supported", sqle.getMessage());
@@ -342,11 +348,6 @@ public class ResultSetTestCase extends JdbcIntegrationTestCase {
             builder.field("test_date", new Date(randomMillisSinceEpoch()));
         });
         
-        System.out.println("long = " + longNotInt);
-        System.out.println("double = " + doubleNotInt);
-        System.out.println("float = " + floatNotInt);
-        System.out.println("keyword = " + randomString);
-        
         try (Connection connection = esJdbc()) {
             try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM test")) {
                 try (ResultSet results = statement.executeQuery()) {
@@ -362,7 +363,7 @@ public class ResultSetTestCase extends JdbcIntegrationTestCase {
                     assertEquals(format(Locale.ROOT, "Numeric %s out of range", Double.toString(floatNotInt)), sqle.getMessage());
                     
                     sqle = expectThrows(SQLException.class, () -> results.getInt("test_keyword"));
-                    assertEquals(format(Locale.ROOT, "Unable to convert value [%.128s] to an integer", randomString), sqle.getMessage());
+                    assertEquals(format(Locale.ROOT, "Unable to convert value [%.128s] to an Integer", randomString), sqle.getMessage());
                     
                     sqle = expectThrows(SQLException.class, () -> results.getInt("test_date"));
                     assertEquals("Conversion from type [TIMESTAMP] to [Integer] not supported", sqle.getMessage());
@@ -399,7 +400,7 @@ public class ResultSetTestCase extends JdbcIntegrationTestCase {
                     
                     assertTrue(results.next());
                     assertEquals(random2, results.getLong(1));
-                    assertEquals(random2, results.getLong("test_integer"));
+                    assertEquals(random2, results.getLong("test_long"));
                     assertTrue(results.getObject(1) instanceof Long);
                     assertEquals(random3, results.getLong("test_keyword"));
                     
@@ -420,7 +421,10 @@ public class ResultSetTestCase extends JdbcIntegrationTestCase {
                         if (entry.getValue() instanceof Double) {
                             assertEquals(Math.round(entry.getValue().doubleValue()), results.getLong(entry.getKey()));
                         } else if (entry.getValue() instanceof Float) {
-                            assertEquals(Math.round(entry.getValue().floatValue()), results.getLong(entry.getKey()));
+                            /*if (entry.getValue().doubleValue() > Long.MAX_VALUE || entry.getValue().doubleValue() < Long.MIN_VALUE) {
+                                assertEquals(Math.round(entry.getValue().doubleValue()), results.getLong(entry.getKey()));
+                            }*/
+                            assertEquals(Math.round(entry.getValue().doubleValue()), results.getLong(entry.getKey()));
                         } else {
                             assertEquals(entry.getValue().longValue(), results.getLong(entry.getKey()));
                         }
@@ -461,7 +465,7 @@ public class ResultSetTestCase extends JdbcIntegrationTestCase {
                     assertEquals(format(Locale.ROOT, "Numeric %s out of range", Double.toString(floatNotLong)), sqle.getMessage());
                     
                     sqle = expectThrows(SQLException.class, () -> results.getLong("test_keyword"));
-                    assertEquals(format(Locale.ROOT, "Unable to convert value [%.128s] to a long", randomString), sqle.getMessage());
+                    assertEquals(format(Locale.ROOT, "Unable to convert value [%.128s] to a Long", randomString), sqle.getMessage());
                     
                     sqle = expectThrows(SQLException.class, () -> results.getLong("test_date"));
                     assertEquals("Conversion from type [TIMESTAMP] to [Long] not supported", sqle.getMessage());
@@ -544,10 +548,98 @@ public class ResultSetTestCase extends JdbcIntegrationTestCase {
                     results.next();
                     
                     SQLException sqle = expectThrows(SQLException.class, () -> results.getDouble("test_keyword"));
-                    assertEquals(format(Locale.ROOT, "Unable to convert value [%.128s] to a double", randomString), sqle.getMessage());
+                    assertEquals(format(Locale.ROOT, "Unable to convert value [%.128s] to a Double", randomString), sqle.getMessage());
                     
                     sqle = expectThrows(SQLException.class, () -> results.getDouble("test_date"));
                     assertEquals("Conversion from type [TIMESTAMP] to [Double] not supported", sqle.getMessage());
+                }
+            }
+        }
+    }
+    
+    // Float values testing
+    public void testGettingValidFloatWithoutCasting() throws Exception {
+        float random1 = randomFloat();
+        float random2 = randomValueOtherThan(random1, () -> randomFloat());
+        float random3 = randomValueOtherThanMany(Arrays.asList(random1, random2)::contains, () -> randomFloat());
+        
+        createTestDataForFloatValueTests(random1, random2, random3);
+        
+        try (Connection connection = esJdbc()) {
+            try (PreparedStatement statement = connection.prepareStatement("SELECT test_float, test_null_float, test_keyword FROM test")) {
+                try (ResultSet results = statement.executeQuery()) {
+                    ResultSetMetaData resultSetMetaData = results.getMetaData();
+
+                    results.next();
+                    assertEquals(3, resultSetMetaData.getColumnCount());
+                    assertEquals(Types.REAL, resultSetMetaData.getColumnType(1));
+                    assertEquals(Types.REAL, resultSetMetaData.getColumnType(2));
+                    assertEquals(random1, results.getFloat(1), 0.0f);
+                    assertEquals(random1, results.getFloat("test_float"), 0.0f);
+                    assertTrue(results.getObject(1) instanceof Float);
+                    
+                    assertEquals(0, results.getFloat(2), 0.0d);
+                    assertTrue(results.wasNull());
+                    assertEquals(null, results.getObject("test_null_float"));
+                    assertTrue(results.wasNull());
+                    
+                    assertTrue(results.next());
+                    assertEquals(random2, results.getFloat(1), 0.0d);
+                    assertEquals(random2, results.getFloat("test_float"), 0.0d);
+                    assertTrue(results.getObject(1) instanceof Float);
+                    assertEquals(random3, results.getFloat("test_keyword"), 0.0d);
+                    
+                    assertFalse(results.next());
+                }
+            }
+        }
+    }
+    
+    public void testGettingValidFloatWithCasting() throws Exception {
+        Map<String,Number> map = createTestDataForNumericValueTypes(() -> randomFloat());
+        
+        try (Connection connection = esJdbc()) {
+            try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM test")) {
+                try (ResultSet results = statement.executeQuery()) {
+                    results.next();
+                    for(Entry<String, Number> entry : map.entrySet()) {
+                        assertEquals(entry.getValue().floatValue(), results.getFloat(entry.getKey()), 0.0f);
+                    }
+                }
+            }
+        }
+    }
+
+    public void testGettingInvalidFloat() throws Exception {
+        createIndex("test");
+        updateMappingForNumericValuesTests("test");
+        updateMapping("test", builder -> {
+            builder.startObject("test_keyword").field("type", "keyword").endObject();
+            builder.startObject("test_date").field("type", "date").endObject();
+        });
+        
+        String randomString = randomUnicodeOfCodepointLengthBetween(128, 256);
+        double doubleNotFloat = (double) randomDoubleBetween(Float.MAX_VALUE + 1, Double.MAX_VALUE, true);
+
+        index("test", "1", builder -> {
+            builder.field("test_double", doubleNotFloat);
+            builder.field("test_keyword", randomString);
+            builder.field("test_date", new Date(randomMillisSinceEpoch()));
+        });
+        
+        try (Connection connection = esJdbc()) {
+            try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM test")) {
+                try (ResultSet results = statement.executeQuery()) {
+                    results.next();
+                    
+                    SQLException sqle = expectThrows(SQLException.class, () -> results.getLong("test_double"));
+                    assertEquals(format(Locale.ROOT, "Numeric %s out of range", Double.toString(doubleNotFloat)), sqle.getMessage());
+                    
+                    sqle = expectThrows(SQLException.class, () -> results.getFloat("test_keyword"));
+                    assertEquals(format(Locale.ROOT, "Unable to convert value [%.128s] to a Float", randomString), sqle.getMessage());
+                    
+                    sqle = expectThrows(SQLException.class, () -> results.getFloat("test_date"));
+                    assertEquals("Conversion from type [TIMESTAMP] to [Float] not supported", sqle.getMessage());
                 }
             }
         }
@@ -616,6 +708,158 @@ public class ResultSetTestCase extends JdbcIntegrationTestCase {
         } catch (StackOverflowError soe) {
             fail("Infinite recursive call on getObject() method");
         }
+    }
+    
+    public void testUnsupportedGetMethods() throws IOException, SQLException {
+        index("test", "1", builder -> {
+            builder.field("test", "test");
+        });
+        Connection conn = esJdbc();
+        PreparedStatement statement = conn.prepareStatement("SELECT * FROM test");
+        ResultSet r = statement.executeQuery();
+        
+        r.next();
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getAsciiStream("test"), "AsciiStream not supported");
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getAsciiStream(1), "AsciiStream not supported");
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getArray("test"), "Array not supported");
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getArray(1), "Array not supported");
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getBigDecimal("test"), "BigDecimal not supported");
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getBigDecimal(1,1), "BigDecimal not supported");
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getBigDecimal("test"), "BigDecimal not supported");
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getBigDecimal(1,1), "BigDecimal not supported");
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getBinaryStream("test"), "BinaryStream not supported");
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getBinaryStream(1), "BinaryStream not supported");
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getBlob("test"), "Blob not supported");
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getBlob(1), "Blob not supported");
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getCharacterStream("test"), "CharacterStream not supported");
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getCharacterStream(1), "CharacterStream not supported");
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getClob("test"), "Clob not supported");
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getClob(1), "Clob not supported");
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getNCharacterStream("test"), "NCharacterStream not supported");
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getNCharacterStream(1), "NCharacterStream not supported");
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getNClob("test"), "NClob not supported");
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getNClob(1), "NClob not supported");
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getNString("test"), "NString not supported");
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getNString(1), "NString not supported");
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getRef("test"), "Ref not supported");
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getRef(1), "Ref not supported");
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getRowId("test"), "RowId not supported");
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getRowId(1), "RowId not supported");
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getSQLXML("test"), "SQLXML not supported");
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getSQLXML(1), "SQLXML not supported");        
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getUnicodeStream("test"), "UnicodeStream not supported");
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getUnicodeStream(1), "UnicodeStream not supported");
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getURL("test"), "URL not supported");
+        assertThrowsUnsupportedAndExpectErrorMessage(() -> r.getURL(1), "URL not supported");
+    }
+    
+    private void assertThrowsUnsupportedAndExpectErrorMessage(ThrowingRunnable runnable, String message) {
+        SQLException sqle = expectThrows(SQLFeatureNotSupportedException.class, runnable);
+        assertEquals(message, sqle.getMessage());
+    }
+    
+    public void testUnsupportedUpdateMethods() throws IOException, SQLException {
+        index("test", "1", builder -> {
+            builder.field("test", "test");
+        });
+        Connection conn = esJdbc();
+        PreparedStatement statement = conn.prepareStatement("SELECT * FROM test");
+        ResultSet r = statement.executeQuery();
+        
+        r.next();
+        Blob b = null;
+        InputStream i = null;
+        Clob c = null;
+        NClob nc = null;
+        Reader rd = null;
+        
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateBytes(1, null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateBytes("", null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateArray(1, null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateArray("", null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateAsciiStream(1, null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateAsciiStream("", null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateAsciiStream(1, null, 1));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateAsciiStream(1, null, 1));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateAsciiStream("", null, 1));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateAsciiStream("", null, 1L));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateBigDecimal(1, null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateBigDecimal("", null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateBinaryStream(1, null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateBinaryStream("", null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateBinaryStream(1, null, 1));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateBinaryStream(1, null, 1));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateBinaryStream("", null, 1));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateBinaryStream("", null, 1L));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateBlob(1, b));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateBlob(1, i));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateBlob("", b));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateBlob("", i));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateBlob(1, null, 1));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateBlob("", null, 1));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateBoolean(1, false));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateBoolean("", false));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateByte(1, (byte) 1));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateByte("", (byte) 1));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateCharacterStream(1, null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateCharacterStream("", null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateCharacterStream(1, null, 1));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateCharacterStream(1, null, 1L));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateCharacterStream("", null, 1));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateCharacterStream("", null, 1L));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateClob(1, c));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateClob(1, rd));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateClob("", c));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateClob("", rd));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateClob(1, null, 1L));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateClob("", null, 1L));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateDate(1, null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateDate("", null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateDouble(1, 0d));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateDouble("", 0d));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateFloat(1, 0f));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateFloat("", 0f));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateInt(1, 0));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateInt("", 0));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateLong(1, 0L));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateLong("", 0L));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateNCharacterStream(1, null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateNCharacterStream("", null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateNCharacterStream(1, null, 1L));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateNCharacterStream("", null, 1L));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateNClob(1, nc));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateNClob(1, rd));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateNClob("", nc));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateNClob("", rd));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateNClob(1, null, 1));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateNClob("", null, 1));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateNString(1, null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateNString("", null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateNull(1));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateNull(""));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateObject(1, null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateObject("", null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateObject(1, null, 1));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateObject("", null, 1));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateRef(1, null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateRef("", null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateRow());
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateRowId(1, null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateRowId("", null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateSQLXML(1, null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateSQLXML("", null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateShort(1, (short) 0));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateShort("", (short) 0));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateString(1, null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateString("", null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateTime(1, null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateTime("", null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateTimestamp(1, null));
+        assertThrowsWritesUnsupportedForUpdate(() -> r.updateTimestamp("", null));
+    }
+    
+    private void assertThrowsWritesUnsupportedForUpdate(ThrowingRunnable r) {
+        assertThrowsUnsupportedAndExpectErrorMessage(r, "Writes not supported");
     }
     
     private void createIndex(String index) throws Exception {
@@ -737,14 +981,36 @@ public class ResultSetTestCase extends JdbcIntegrationTestCase {
         
         index("test", "1", builder -> {
             builder.field("test_double", random1);
-            builder.field("test_null_integer", (Double) null);
+            builder.field("test_null_double", (Double) null);
         });
         index("test", "2", builder -> {
             builder.field("test_double", random2);
             builder.field("test_keyword", random3);
         });
     }
+    
+    private void createTestDataForFloatValueTests(float random1, float random2, float random3) throws Exception, IOException {
+        createIndex("test");
+        updateMapping("test", builder -> {
+            builder.startObject("test_float").field("type", "float").endObject();
+            builder.startObject("test_null_float").field("type", "float").endObject();
+            builder.startObject("test_keyword").field("type", "keyword").endObject();
+        });
+        
+        index("test", "1", builder -> {
+            builder.field("test_float", random1);
+            builder.field("test_null_float", (Double) null);
+        });
+        index("test", "2", builder -> {
+            builder.field("test_float", random2);
+            builder.field("test_keyword", random3);
+        });
+    }
 
+    /**
+     * Creates test data for all numeric get* methods. All values random and different from the other numeric fields already generated.
+     * It returns a map containing the field name and its randomly generated value to be later used in checking the returned values.
+     */
     private Map<String,Number> createTestDataForNumericValueTypes(Supplier<Number> randomGenerator) throws Exception, IOException {
         Map<String,Number> map = new HashMap<String,Number>();
         createIndex("test");
