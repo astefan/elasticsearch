@@ -92,7 +92,7 @@ public class JdbcPreparedStatementTests extends ESTestCase {
         JdbcPreparedStatement jps = createJdbcPreparedStatement();
         
         SQLException sqle = expectThrows(SQLException.class, () -> jps.setObject(1, "foo bar", Types.INTEGER));
-        assertEquals("Conversion from type [VARCHAR] to [Integer] not supported", sqle.getMessage());
+        assertEquals("Unable to convert value [foo bar] to an Integer", sqle.getMessage());
     }
     
     public void testSettingByteTypeValues() throws SQLException {

@@ -237,12 +237,18 @@ class JdbcResultSet implements ResultSet, JdbcWrapper {
 
     @Override
     public Date getDate(String columnLabel) throws SQLException {
+        // TODO: the error message in case the value in the column cannot be converted to a Date refers to a column index
+        // (for example - "unable to convert column 4 to a long") and not to the column name, which is a bit confusing.
+        // Should we reconsider this? Maybe by catching the exception here and rethrowing it with the columnLabel instead.
         return getDate(column(columnLabel));
     }
 
     private Long dateTime(int columnIndex) throws SQLException {
         Object val = column(columnIndex);
         try {
+            // TODO: the B6 appendix of the jdbc spec does mention CHAR, VARCHAR, LONGVARCHAR, DATE, TIMESTAMP as supported
+            // jdbc types that should be handled by getDate and getTime methods. From all of those we support VARCHAR and
+            // TIMESTAMP. Should we consider the VARCHAR conversion as a later enhancement?
             return val == null ? null : (Long) val;
         } catch (ClassCastException cce) {
             throw new SQLException("unable to convert column " + columnIndex + " to a long", cce);

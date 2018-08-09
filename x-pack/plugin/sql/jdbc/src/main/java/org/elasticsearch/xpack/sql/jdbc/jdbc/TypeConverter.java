@@ -56,7 +56,7 @@ final class TypeConverter {
 
     }
 
-    private static final long DAY_IN_MILLIS = 60 * 60 * 24;
+    private static final long DAY_IN_MILLIS = 60 * 60 * 24 * 1000;
     private static final Map<Class<?>, JDBCType> javaToJDBC;
     
     static {
@@ -339,6 +339,8 @@ final class TypeConverter {
             case FLOAT:
             case DOUBLE:
                 return Boolean.valueOf(Integer.signum(((Number) val).intValue()) != 0);
+            case VARCHAR:
+                return Boolean.valueOf((String) val);
             default:
                 throw new SQLException("Conversion from type [" + columnType + "] to [Boolean] not supported");
 
