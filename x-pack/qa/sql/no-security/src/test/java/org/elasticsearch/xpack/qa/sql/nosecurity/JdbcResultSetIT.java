@@ -9,5 +9,4 @@ package org.elasticsearch.xpack.qa.sql.nosecurity;
 import org.elasticsearch.xpack.qa.sql.jdbc.ResultSetTestCase;
 
 public class JdbcResultSetIT extends ResultSetTestCase {
-
 }
