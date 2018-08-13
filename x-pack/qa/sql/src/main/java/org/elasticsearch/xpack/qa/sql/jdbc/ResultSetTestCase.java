@@ -5,8 +5,6 @@
  */
 package org.elasticsearch.xpack.qa.sql.jdbc;
 
-import com.carrotsearch.randomizedtesting.annotations.Seed;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
@@ -965,8 +963,7 @@ public class ResultSetTestCase extends ResultSetBaseTestCase {
             builder.startObject("test_date").field("type", "date").endObject();
         });
         
-        //Date randomDate = new Date(randomMillisSinceEpoch());
-        Date randomDate = new Date(1000);
+        Date randomDate = new Date(randomMillisSinceEpoch());
         String timeZoneId = randomKnownTimeZone();
         Calendar c = Calendar.getInstance(TimeZone.getTimeZone(timeZoneId), Locale.ROOT);
         index("test", "1", builder -> {

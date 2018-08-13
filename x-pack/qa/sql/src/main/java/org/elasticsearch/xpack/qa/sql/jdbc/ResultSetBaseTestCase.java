@@ -258,7 +258,7 @@ abstract class ResultSetBaseTestCase extends JdbcIntegrationTestCase {
     private Connection useDriverManager(String timeZoneId) throws SQLException {
         String elasticsearchAddress = getProtocol() + "://" + elasticsearchAddress();
         String address = "jdbc:es://" + elasticsearchAddress;
-        Properties connectionProperties = new Properties();
+        Properties connectionProperties = connectionProperties();
         connectionProperties.put(JdbcConfiguration.TIME_ZONE, timeZoneId);
         Connection connection = DriverManager.getConnection(address, connectionProperties);
         
@@ -271,7 +271,7 @@ abstract class ResultSetBaseTestCase extends JdbcIntegrationTestCase {
         JdbcDataSource dataSource = new JdbcDataSource();
         String address = "jdbc:es://" + elasticsearchAddress;
         dataSource.setUrl(address);
-        Properties connectionProperties = new Properties();
+        Properties connectionProperties = connectionProperties();
         connectionProperties.put(JdbcConfiguration.TIME_ZONE, timeZoneId);
         dataSource.setProperties(connectionProperties);
         Connection connection = dataSource.getConnection();

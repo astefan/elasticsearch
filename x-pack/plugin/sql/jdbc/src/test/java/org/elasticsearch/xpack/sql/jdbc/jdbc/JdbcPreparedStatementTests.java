@@ -550,7 +550,8 @@ public class JdbcPreparedStatementTests extends ESTestCase {
     }
 
     private long randomMillisSinceEpoch() {
-        return randomLongBetween(0, System.currentTimeMillis());
+        // random between Jan 1st, 1970 and Jan 1st, 2050
+        return ESTestCase.randomLongBetween(0, 2524608000000L);
     }
 
     private JdbcPreparedStatement createJdbcPreparedStatement() throws SQLException {
