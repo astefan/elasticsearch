@@ -17,6 +17,11 @@ dependencies {
   // CLI testing dependencies
   compile project(path: xpackModule('sql:sql-cli'), configuration: 'nodeps')
   compile "org.jline:jline:3.6.0"
+  
+  testCompile xpackProject('plugin:sql')
+  compile project(path: xpackModule('core'), configuration: 'testArtifacts')
+  compile project(path: ':modules:reindex', configuration: 'runtime')
+  compile project(path: ':modules:analysis-common', configuration: 'runtime')
 }
 
 /* disable unit tests because these are all integration tests used

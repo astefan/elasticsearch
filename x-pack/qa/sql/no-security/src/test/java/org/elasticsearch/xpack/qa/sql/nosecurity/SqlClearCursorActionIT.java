@@ -3,11 +3,18 @@
  * or more contributor license agreements. Licensed under the Elastic License;
  * you may not use this file except in compliance with the Elastic License.
  */
-package org.elasticsearch.xpack.sql.action;
+package org.elasticsearch.xpack.qa.sql.nosecurity;
 
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.support.WriteRequest;
+import org.elasticsearch.xpack.qa.sql.AbstractSqlIntegTestCase;
+import org.elasticsearch.xpack.sql.action.SqlClearCursorAction;
+import org.elasticsearch.xpack.sql.action.SqlClearCursorRequestBuilder;
+import org.elasticsearch.xpack.sql.action.SqlClearCursorResponse;
+import org.elasticsearch.xpack.sql.action.SqlQueryAction;
+import org.elasticsearch.xpack.sql.action.SqlQueryRequestBuilder;
+import org.elasticsearch.xpack.sql.action.SqlQueryResponse;
 import org.elasticsearch.xpack.sql.session.Cursor;
 
 import static org.elasticsearch.test.hamcrest.ElasticsearchAssertions.assertAcked;

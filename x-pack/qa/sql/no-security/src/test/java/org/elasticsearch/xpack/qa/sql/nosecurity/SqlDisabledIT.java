@@ -3,10 +3,13 @@
  * or more contributor license agreements. Licensed under the Elastic License;
  * you may not use this file except in compliance with the Elastic License.
  */
-package org.elasticsearch.xpack.sql.action;
+package org.elasticsearch.xpack.qa.sql.nosecurity;
 
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.xpack.core.XPackSettings;
+import org.elasticsearch.xpack.qa.sql.AbstractSqlIntegTestCase;
+import org.elasticsearch.xpack.sql.action.SqlQueryAction;
+import org.elasticsearch.xpack.sql.action.SqlQueryRequestBuilder;
 
 import static org.hamcrest.CoreMatchers.either;
 import static org.hamcrest.CoreMatchers.startsWith;

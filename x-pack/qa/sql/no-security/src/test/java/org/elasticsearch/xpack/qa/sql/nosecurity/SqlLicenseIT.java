@@ -3,7 +3,7 @@
  * or more contributor license agreements. Licensed under the Elastic License;
  * you may not use this file except in compliance with the Elastic License.
  */
-package org.elasticsearch.xpack.sql.action;
+package org.elasticsearch.xpack.qa.sql.nosecurity;
 
 import org.elasticsearch.ElasticsearchSecurityException;
 import org.elasticsearch.action.index.IndexRequest;
@@ -20,7 +20,12 @@ import org.elasticsearch.search.fetch.subphase.DocValueFieldsContext;
 import org.elasticsearch.search.fetch.subphase.FetchSourceContext;
 import org.elasticsearch.test.hamcrest.ElasticsearchAssertions;
 import org.elasticsearch.transport.Netty4Plugin;
-import org.elasticsearch.transport.nio.NioTransportPlugin;
+import org.elasticsearch.xpack.sql.action.SqlQueryAction;
+import org.elasticsearch.xpack.sql.action.SqlQueryRequestBuilder;
+import org.elasticsearch.xpack.sql.action.SqlQueryResponse;
+import org.elasticsearch.xpack.sql.action.SqlTranslateAction;
+import org.elasticsearch.xpack.sql.action.SqlTranslateRequestBuilder;
+import org.elasticsearch.xpack.sql.action.SqlTranslateResponse;
 import org.hamcrest.Matchers;
 import org.junit.Before;
 
@@ -61,10 +66,9 @@ public class SqlLicenseIT extends AbstractLicensesIntegrationTestCase {
     @Override
     protected Settings nodeSettings(int nodeOrdinal) {
         // Enable http so we can test JDBC licensing because only exists on the REST layer.
-        String httpPlugin = randomBoolean() ? Netty4Plugin.NETTY_HTTP_TRANSPORT_NAME : NioTransportPlugin.NIO_TRANSPORT_NAME;
         return Settings.builder()
                 .put(super.nodeSettings(nodeOrdinal))
-                .put(NetworkModule.HTTP_TYPE_KEY, httpPlugin)
+                .put(NetworkModule.HTTP_TYPE_KEY, Netty4Plugin.NETTY_HTTP_TRANSPORT_NAME)
                 .build();
     }
 

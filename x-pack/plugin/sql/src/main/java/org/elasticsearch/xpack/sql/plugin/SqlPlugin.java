@@ -60,6 +60,7 @@ public class SqlPlugin extends Plugin implements ActionPlugin {
                     XPackLicenseState licenseState = XPackPlugin.getSharedLicenseState();
                     switch (mode) {
                         case JDBC:
+                        case ODBC:
                             if (licenseState.isJdbcAllowed() == false) {
                                 throw LicenseUtils.newComplianceException("jdbc");
                             }

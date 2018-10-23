@@ -31,6 +31,7 @@ import java.util.List;
 
 import static java.util.Collections.unmodifiableList;
 import static org.elasticsearch.xpack.sql.proto.Mode.JDBC;
+import static org.elasticsearch.xpack.sql.proto.Mode.ODBC;
 
 public class TransportSqlQueryAction extends HandledTransportAction<SqlQueryRequest, SqlQueryResponse> {
     private final PlanExecutor planExecutor;
@@ -73,7 +74,7 @@ public class TransportSqlQueryAction extends HandledTransportAction<SqlQueryRequ
     static SqlQueryResponse createResponse(SqlQueryRequest request, SchemaRowSet rowSet) {
         List<ColumnInfo> columns = new ArrayList<>(rowSet.columnCount());
         for (Schema.Entry entry : rowSet.schema()) {
-            if (request.mode() == JDBC) {
+            if (request.mode() == JDBC || request.mode() == ODBC) {
                 columns.add(new ColumnInfo("", entry.name(), entry.type().esType, entry.type().jdbcType,
                         entry.type().displaySize));
             } else {

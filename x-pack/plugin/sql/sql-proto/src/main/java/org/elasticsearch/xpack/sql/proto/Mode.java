@@ -13,6 +13,7 @@ import java.util.Locale;
  */
 public enum Mode {
     PLAIN,
+    ODBC,
     JDBC;
 
     public static Mode fromString(String mode) {
