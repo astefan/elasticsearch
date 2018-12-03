@@ -7,10 +7,8 @@
 package org.elasticsearch.xpack.sql.plugin;
 
 import org.apache.logging.log4j.LogManager;
-import org.elasticsearch.ElasticsearchParseException;
 import org.elasticsearch.Version;
 import org.elasticsearch.client.node.NodeClient;
-import org.elasticsearch.common.ParseField;
 import org.elasticsearch.common.logging.DeprecationLogger;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
@@ -23,7 +21,6 @@ import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.RestResponse;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.rest.action.RestResponseListener;
-import org.elasticsearch.xpack.sql.action.AbstractSqlQueryRequest.Field;
 import org.elasticsearch.xpack.sql.action.SqlQueryAction;
 import org.elasticsearch.xpack.sql.action.SqlQueryRequest;
 import org.elasticsearch.xpack.sql.action.SqlQueryResponse;
@@ -45,10 +42,6 @@ import static org.elasticsearch.xpack.sql.proto.RequestInfo.CLI;
 public class RestSqlQueryAction extends BaseRestHandler {
 
     private static final DeprecationLogger deprecationLogger = new DeprecationLogger(LogManager.getLogger(RestSqlQueryAction.class));
-    private static final ParseField MODE = new ParseField("mode");
-    //private static final ParseField CLIENT_ID = new ParseField("client.id");
-
-    private static String CLIENT_ID = "client.id";
 
     RestSqlQueryAction(Settings settings, RestController controller) {
         super(settings);
@@ -65,72 +58,22 @@ public class RestSqlQueryAction extends BaseRestHandler {
     @Override
     protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
         SqlQueryRequest sqlRequest;
-        try (XContentParser parser = request.contentOrSourceParamParser()) {
-            String clientId = request.param(CLIENT_ID);
-            if (clientId != null) {
-                clientId = clientId.toLowerCase(Locale.ROOT);
-                if (!clientId.equals(CLI) && !clientId.equals(CANVAS)) {
-                    clientId = null;
-                }
-            }
-            
-            sqlRequest = SqlQueryRequest.fromXContent(parser,
-                    new RequestInfo(Mode.fromString(request.param("mode")), clientId));
-        }
-        /*String mode = null;
-        String clientId = null;
         try (XContentParser parser = request.contentParser()) {
-            parser.nextToken();
-
-            String currentFieldName = null;
-            XContentParser.Token token;
-            while ((token = parser.nextToken()) != XContentParser.Token.END_OBJECT) {
-                if (token == XContentParser.Token.FIELD_NAME) {
-                    currentFieldName = parser.currentName();
-                } else if (token == XContentParser.Token.VALUE_STRING) {
-                    if (Boolean.FALSE ==
-                           (Field.QUERY.match(currentFieldName, parser.getDeprecationHandler()) ||
-                            Field.TIME_ZONE.match(currentFieldName, parser.getDeprecationHandler()) ||
-                            Field.REQUEST_TIMEOUT.match(currentFieldName, parser.getDeprecationHandler()) ||
-                            Field.PAGE_TIMEOUT.match(currentFieldName, parser.getDeprecationHandler()) ||
-                            //Field.CURSOR.match(currentFieldName, parser.getDeprecationHandler()) ||
-                            Field.MODE.match(currentFieldName, parser.getDeprecationHandler()) ||
-                            Field.CLIENT_ID.match(currentFieldName, parser.getDeprecationHandler()))) 
-                    {
-                        throw new ElasticsearchParseException("could not parse SQL request. Unexpected text field [{}]",
-                                currentFieldName);
-                    } else if(Field.MODE.match(currentFieldName, parser.getDeprecationHandler())) {
-                        mode = parser.text();
-                    } else if(Field.CLIENT_ID.match(currentFieldName, parser.getDeprecationHandler())) {
-                        clientId = parser.text();
-                    }
-                } else if (token == XContentParser.Token.VALUE_NUMBER) {
-                    if (Boolean.FALSE == Field.FETCH_SIZE.match(currentFieldName, parser.getDeprecationHandler())) {
-                        throw new ElasticsearchParseException("could not parse SQL request. Unexpected numeric field [{}]",
-                                currentFieldName);
-                    }
-                } else if (token == XContentParser.Token.START_ARRAY) {
-                    if (Boolean.FALSE == Field.PARAMS.match(currentFieldName, parser.getDeprecationHandler())) {
-                        throw new ElasticsearchParseException("could not parse SQL request. Unexpected array field [{}]",
-                                currentFieldName);
-                    }
-                    
-                    while ((token = parser.nextToken()) != XContentParser.Token.END_ARRAY) {}
-                } else {
-                    throw new ElasticsearchParseException("could not parse SQL request. Unexpected token [{}]", token);
-                }
+            sqlRequest = SqlQueryRequest.fromXContent(parser);
+        }
+        
+        // no mode specified, default to "PLAIN"
+        if (sqlRequest.requestInfo() == null) {
+            sqlRequest.requestInfo(new RequestInfo(Mode.PLAIN));
+        }
+        
+        if (sqlRequest.requestInfo().clientId() != null) {
+            String clientId = sqlRequest.requestInfo().clientId().toLowerCase(Locale.ROOT);
+            if (!clientId.equals(CLI) && !clientId.equals(CANVAS)) {
+                clientId = null;
             }
-            
-            if (clientId != null) {
-                clientId = clientId.toLowerCase(Locale.ROOT);
-                if (!clientId.equals(CLI) && !clientId.equals(CANVAS)) {
-                    clientId = null;
-                }
-            }
-            
-            sqlRequest = SqlQueryRequest.fromXContent(parser,
-                    new RequestInfo(Mode.fromString(mode), clientId));
-        }*/
+            sqlRequest.requestInfo().clientId(clientId);
+        }
 
         /*
          * Since we support {@link TextFormat} <strong>and</strong>

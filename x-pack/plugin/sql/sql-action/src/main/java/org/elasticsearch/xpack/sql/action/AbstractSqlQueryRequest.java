@@ -15,6 +15,7 @@ import org.elasticsearch.common.xcontent.ObjectParser;
 import org.elasticsearch.common.xcontent.ToXContentFragment;
 import org.elasticsearch.index.query.AbstractQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.xpack.sql.proto.Mode;
 import org.elasticsearch.xpack.sql.proto.Protocol;
 import org.elasticsearch.xpack.sql.proto.RequestInfo;
 import org.elasticsearch.xpack.sql.proto.SqlTypedParamValue;
@@ -60,6 +61,21 @@ public abstract class AbstractSqlQueryRequest extends AbstractSqlRequest impleme
         // TODO: convert this into ConstructingObjectParser
         ObjectParser<R, Void> parser = new ObjectParser<>("sql/query", false, supplier);
         parser.declareString(AbstractSqlQueryRequest::query, Field.QUERY);
+        parser.declareString((request, mode) -> {
+            Mode m = Mode.fromString(mode);
+            if (request.requestInfo() != null) {
+                request.requestInfo().mode(m);
+            } else {
+                request.requestInfo(new RequestInfo(m));
+            }
+        }, Field.MODE);
+        parser.declareString((request, clientId) -> {
+            if (request.requestInfo() != null) {
+                request.requestInfo().clientId(clientId);
+            } else {
+                request.requestInfo(new RequestInfo(Mode.PLAIN, clientId));
+            }
+        }, Field.CLIENT_ID);
         parser.declareObjectArray(AbstractSqlQueryRequest::params, (p, c) -> SqlTypedParamValue.fromXContent(p), Field.PARAMS);
         parser.declareString((request, zoneId) -> request.timeZone(TimeZone.getTimeZone(zoneId)), Field.TIME_ZONE);
         parser.declareInt(AbstractSqlQueryRequest::fetchSize, Field.FETCH_SIZE);
@@ -238,6 +254,7 @@ public abstract class AbstractSqlQueryRequest extends AbstractSqlRequest impleme
     
     public interface Field {
         ParseField QUERY = new ParseField("query");
+        ParseField CURSOR = new ParseField("cursor");
         ParseField PARAMS = new ParseField("params");
         ParseField TIME_ZONE = new ParseField("time_zone");
         ParseField FETCH_SIZE = new ParseField("fetch_size");
