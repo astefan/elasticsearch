@@ -60,15 +60,15 @@ dateTimeDayOfWeek
 SELECT DAY_OF_WEEK(birth_date) d, last_name l FROM "test_emp" WHERE emp_no < 10010 ORDER BY DAY_OF_WEEK(birth_date);
 
 d:i                  | l:s
-1                    | Preusig
-2                    | Simmel
-3                    | Facello
-3                    | Kalloufi
-4                    | Bamford
-4                    | Zielinski
-5                    | Maliniak
-6                    | Koblick
-6                    | Peac
+2                    | Preusig
+3                    | Simmel
+4                    | Facello
+4                    | Kalloufi
+5                    | Bamford
+5                    | Zielinski
+6                    | Maliniak
+7                    | Koblick
+7                    | Peac
 ;
 
 dateTimeDayOfYear
@@ -232,7 +232,7 @@ SELECT DAY_OF_WEEK(CAST('2018-02-19T10:23:27Z' AS TIMESTAMP)) AS day;
 
       day
 ---------------
-1
+2
 // end::dayOfWeek
 ;
 
