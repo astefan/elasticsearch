@@ -119,6 +119,7 @@ SELECT WEEK(birth_date) week, birth_date FROM test_emp WHERE WEEK(birth_date) > 
 51             |1960-12-17T00:00:00.000Z
 2              |1965-01-03T00:00:00.000Z
 2              |1953-01-07T00:00:00.000Z
+;
 
 //
 // Aggregate
@@ -218,6 +219,7 @@ SELECT WEEK(birth_date) week, COUNT(*) c FROM test_emp WHERE MOD(WEEK(birth_date
 44             |2              
 48             |2              
 52             |3              
+;
 
 constantYear
 // tag::year
@@ -249,6 +251,29 @@ SELECT ISO_WEEK_OF_YEAR(CAST('2018-02-19T10:23:27Z' AS TIMESTAMP)) AS week;
 // end::isoWeekOfYear
 ;
 
+// Ignored because of https://github.com/elastic/elasticsearch/issues/33796
+constantDayName-Ignore
+// tag::dayName
+SELECT DAY_NAME(CAST('2018-02-19T10:23:27Z' AS TIMESTAMP)) AS day;
+
+      day
+---------------
+Monday
+// end::dayName
+;
+
+
+// Ignored because of https://github.com/elastic/elasticsearch/issues/33796
+constantMonthName-Ignore
+// tag::monthName
+SELECT MONTH_NAME(CAST('2018-02-19T10:23:27Z' AS TIMESTAMP)) AS month;
+
+     month
+---------------
+February
+// end::monthName
+;
+
 constantDayOfYear
 // tag::dayOfYear
 SELECT DAY_OF_YEAR(CAST('2018-02-19T10:23:27Z' AS TIMESTAMP)) AS day;
@@ -277,6 +302,16 @@ SELECT DAY_OF_MONTH(CAST('2018-02-19T10:23:27Z' AS TIMESTAMP)) AS day;
 ---------------
 19
 // end::dayOfMonth
+;
+
+constantDayOfWeek
+// tag::dayOfWeek
+SELECT DAY_OF_WEEK(CAST('2018-02-19T10:23:27Z' AS TIMESTAMP)) AS day;
+
+      day
+---------------
+2
+// end::dayOfWeek
 ;
 
 constantIsoDayOfWeek
@@ -327,4 +362,24 @@ SELECT SECOND_OF_MINUTE(CAST('2018-02-19T10:23:27Z' AS TIMESTAMP)) AS second;
 ---------------
 27
 // end::secondOfMinute
+;
+
+constantQuarter
+// tag::quarter
+SELECT QUARTER(CAST('2018-02-19T10:23:27Z' AS TIMESTAMP)) AS quarter;
+
+    quarter
+---------------
+1
+// end::quarter
+;
+
+constantWeekOfYear
+// tag::weekOfYear
+SELECT WEEK(CAST('1988-01-05T09:22:10Z' AS TIMESTAMP)) AS week, ISOWEEK(CAST('1988-01-05T09:22:10Z' AS TIMESTAMP)) AS isoweek;
+
+      week     |   isoweek
+---------------+---------------
+2              |1
+// end::weekOfYear
 ;
