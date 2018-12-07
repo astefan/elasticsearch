@@ -17,11 +17,11 @@ include-tagged::{sql-specs}/datetime.csv-spec[year]
 include-tagged::{sql-specs}/datetime.csv-spec[monthOfYear]
 --------------------------------------------------
 
-* Extract the week of the year from a date (`WEEK_OF_YEAR` or `WEEK`)
+* Extract the week of the year from a date (`ISO_WEEK_OF_YEAR` or `ISOWEEK`)
 
 ["source","sql",subs="attributes,callouts,macros"]
 --------------------------------------------------
-include-tagged::{sql-specs}/datetime.csv-spec[weekOfYear]
+include-tagged::{sql-specs}/datetime.csv-spec[isoWeekOfYear]
 --------------------------------------------------
 
 * Extract the day of the year from a date (`DAY_OF_YEAR` or `DOY`)
@@ -38,12 +38,12 @@ include-tagged::{sql-specs}/datetime.csv-spec[dayOfYear]
 include-tagged::{sql-specs}/datetime.csv-spec[dayOfMonth]
 --------------------------------------------------
 
-* Extract the day of the week from a date (`DAY_OF_WEEK` or `DOW`).
+* Extract the day of the week from a date (`ISO_DAY_OF_WEEK` or `ISODOW`).
 Monday is `1`, Tuesday is `2`, etc.
 
 ["source","sql",subs="attributes,callouts,macros"]
 --------------------------------------------------
-include-tagged::{sql-specs}/datetime.csv-spec[dayOfWeek]
+include-tagged::{sql-specs}/datetime.csv-spec[isoDayOfWeek]
 --------------------------------------------------
 
 * Extract the hour of the day from a date (`HOUR_OF_DAY` or `HOUR`).
