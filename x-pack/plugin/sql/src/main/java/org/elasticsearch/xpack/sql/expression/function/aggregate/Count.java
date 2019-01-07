@@ -6,7 +6,6 @@
 package org.elasticsearch.xpack.sql.expression.function.aggregate;
 
 import org.elasticsearch.xpack.sql.expression.Expression;
-import org.elasticsearch.xpack.sql.expression.Literal;
 import org.elasticsearch.xpack.sql.expression.NamedExpression;
 import org.elasticsearch.xpack.sql.tree.Location;
 import org.elasticsearch.xpack.sql.tree.NodeInfo;
@@ -73,7 +72,7 @@ public class Count extends AggregateFunction {
 
     @Override
     public AggregateFunctionAttribute toAttribute() {
-        if (!distinct() && field() instanceof Literal) {
+        if (!distinct()) {
             return new AggregateFunctionAttribute(location(), name(), dataType(), id(), functionId(), "_count");
         }
         return super.toAttribute();
