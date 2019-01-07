@@ -136,7 +136,7 @@ final class QueryTranslator {
             new MatrixStatsAggs(),
             new PercentilesAggs(),
             new PercentileRanksAggs(),
-            new FieldCounts(),
+            new NonNullFieldValuesCounts(),
             new DistinctCounts(),
             new DateTimes()
             );
@@ -775,7 +775,7 @@ final class QueryTranslator {
     // Agg translators
     //
 
-    static class FieldCounts extends SingleValueAggTranslator<Count> {
+    static class NonNullFieldValuesCounts extends SingleValueAggTranslator<Count> {
 
         @Override
         protected LeafAgg toAgg(String id, Count c) {

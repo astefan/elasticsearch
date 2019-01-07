@@ -310,3 +310,12 @@ SELECT HISTOGRAM(emp_no % 100, 10) AS h, COUNT(*) as c FROM test_emp GROUP BY h 
 10             |10             
 0              |10   
 ;
+
+countAll
+SELECT COUNT(ALL first_name.keyword) all_names, COUNT(*) c FROM test_emp;
+
+   all_names   |       c
+---------------+---------------
+90             |100
+;
+
