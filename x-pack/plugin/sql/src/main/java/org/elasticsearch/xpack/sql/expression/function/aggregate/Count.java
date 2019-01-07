@@ -5,13 +5,15 @@
  */
 package org.elasticsearch.xpack.sql.expression.function.aggregate;
 
-import java.util.List;
-
 import org.elasticsearch.xpack.sql.expression.Expression;
+import org.elasticsearch.xpack.sql.expression.Literal;
 import org.elasticsearch.xpack.sql.expression.NamedExpression;
 import org.elasticsearch.xpack.sql.tree.Location;
 import org.elasticsearch.xpack.sql.tree.NodeInfo;
 import org.elasticsearch.xpack.sql.type.DataType;
+
+import java.util.List;
+import java.util.Objects;
 
 /**
  * Count the number of documents matched ({@code COUNT})
@@ -60,7 +62,34 @@ public class Count extends AggregateFunction {
     }
 
     @Override
+    public String name() {
+        if (distinct()) {
+            StringBuilder sb = new StringBuilder(super.name());
+            sb.insert(sb.indexOf("(") + 1, "DISTINCT ");
+            return sb.toString();
+        }
+        return super.name();
+    }
+
+    @Override
     public AggregateFunctionAttribute toAttribute() {
-        return new AggregateFunctionAttribute(location(), name(), dataType(), id(), functionId(), "_count");
+        if (!distinct() && field() instanceof Literal) {
+            return new AggregateFunctionAttribute(location(), name(), dataType(), id(), functionId(), "_count");
+        }
+        return super.toAttribute();
+    }
+    
+    @Override
+    public boolean equals(Object obj) {
+        if (false == super.equals(obj)) {
+            return false;
+        }
+        Count other = (Count) obj;
+        return Objects.equals(other.distinct(), distinct());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), distinct());
     }
 }
