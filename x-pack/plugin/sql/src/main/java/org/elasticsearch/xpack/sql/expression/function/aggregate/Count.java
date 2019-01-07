@@ -7,7 +7,7 @@ package org.elasticsearch.xpack.sql.expression.function.aggregate;
 
 import org.elasticsearch.xpack.sql.expression.Expression;
 import org.elasticsearch.xpack.sql.expression.NamedExpression;
-import org.elasticsearch.xpack.sql.tree.Location;
+import org.elasticsearch.xpack.sql.tree.Source;
 import org.elasticsearch.xpack.sql.tree.NodeInfo;
 import org.elasticsearch.xpack.sql.type.DataType;
 
@@ -23,8 +23,8 @@ public class Count extends AggregateFunction {
 
     private final boolean distinct;
 
-    public Count(Location location, Expression field, boolean distinct) {
-        super(location, field);
+    public Count(Source source, Expression field, boolean distinct) {
+        super(source, field);
         this.distinct = distinct;
     }
 
@@ -38,7 +38,7 @@ public class Count extends AggregateFunction {
         if (newChildren.size() != 1) {
             throw new IllegalArgumentException("expected [1] child but received [" + newChildren.size() + "]");
         }
-        return new Count(location(), newChildren.get(0), distinct);
+        return new Count(source(), newChildren.get(0), distinct);
     }
 
     public boolean distinct() {
@@ -73,7 +73,7 @@ public class Count extends AggregateFunction {
     @Override
     public AggregateFunctionAttribute toAttribute() {
         if (!distinct()) {
-            return new AggregateFunctionAttribute(location(), name(), dataType(), id(), functionId(), "_count");
+            return new AggregateFunctionAttribute(source(), name(), dataType(), id(), functionId(), "_count");
         }
         return super.toAttribute();
     }
