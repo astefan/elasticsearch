@@ -381,7 +381,7 @@ class QueryFolder extends RuleExecutor<PhysicalPlan> {
             // handle count as a special case agg
             if (f instanceof Count) {
                 Count c = (Count) f;
-                //if (!c.distinct()) {
+                // COUNT(*) or COUNT(<numeric_value>)
                 if (c.field() instanceof Literal) {
                     AggRef ref = groupingAgg == null ?
                             GlobalCountRef.INSTANCE :
@@ -390,7 +390,7 @@ class QueryFolder extends RuleExecutor<PhysicalPlan> {
                     Map<String, GroupByKey> pseudoFunctions = new LinkedHashMap<>(queryC.pseudoFunctions());
                     pseudoFunctions.put(functionId, groupingAgg);
                     return new Tuple<>(queryC.withPseudoFunctions(pseudoFunctions), new AggPathInput(f, ref));
-                //}
+                // COUNT(<field_name>)
                 } else if (!c.distinct()) {
                     LeafAgg leafAgg = toAgg(functionId, f);
                     AggPathInput a = new AggPathInput(f, new MetricAggRef(leafAgg.id(), "doc_count", "_count"));

@@ -40,7 +40,7 @@ include-tagged::{sql-specs}/docs.csv-spec[aggAvg]
 .Synopsis:
 [source, sql]
 --------------------------------------------------
-COUNT([ALL] expression<1>)
+COUNT(expression<1>)
 --------------------------------------------------
 
 *Input*:
@@ -52,14 +52,42 @@ COUNT([ALL] expression<1>)
 .Description:
 
 Returns the total number (count) of input values.
-In case of COUNT(*) or COUNT(<numeric_value>), _all_ values are considered (including `null` or missing ones). In case of
-COUNT(<field_name>) `null` values are not considered.
-COUNT(<field_name>) and COUNT(ALL <field_name>) are equivalent. `ALL` can only be used with a field name.
+
+In case of `COUNT(*)` or `COUNT(<numeric_value>)`, _all_ values are considered (including `null` or missing ones).
+
+In case of `COUNT(<field_name>)` `null` values are not considered.
+
 
 ["source","sql",subs="attributes,macros"]
 --------------------------------------------------
 include-tagged::{sql-specs}/docs.csv-spec[aggCountStar]
 --------------------------------------------------
+
+
+[[sql-functions-aggs-count-all]]
+===== `COUNT(ALL)`
+
+.Synopsis:
+[source, sql]
+--------------------------------------------------
+COUNT(ALL field_name<1>)
+--------------------------------------------------
+
+*Input*:
+
+<1> a field name
+
+*Output*: numeric value
+
+.Description:
+
+Returns the total number (count) of all _non-null_ input values. `COUNT(<field_name>)` and `COUNT(ALL <field_name>)` are equivalent.
+
+["source","sql",subs="attributes,macros"]
+--------------------------------------------------
+include-tagged::{sql-specs}/docs.csv-spec[aggCountAll]
+--------------------------------------------------
+
 
 [[sql-functions-aggs-count-distinct]]
 ===== `COUNT(DISTINCT)`
