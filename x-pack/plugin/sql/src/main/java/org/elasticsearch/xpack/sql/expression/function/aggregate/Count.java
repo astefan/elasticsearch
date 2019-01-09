@@ -6,9 +6,10 @@
 package org.elasticsearch.xpack.sql.expression.function.aggregate;
 
 import org.elasticsearch.xpack.sql.expression.Expression;
+import org.elasticsearch.xpack.sql.expression.Literal;
 import org.elasticsearch.xpack.sql.expression.NamedExpression;
-import org.elasticsearch.xpack.sql.tree.Source;
 import org.elasticsearch.xpack.sql.tree.NodeInfo;
+import org.elasticsearch.xpack.sql.tree.Source;
 import org.elasticsearch.xpack.sql.type.DataType;
 
 import java.util.List;
@@ -54,7 +55,9 @@ public class Count extends AggregateFunction {
     public String functionId() {
         String functionId = id().toString();
         // if count works against a given expression, use its id (to identify the group)
-        if (field() instanceof NamedExpression) {
+        // in case of COUNT DISTINCT don't use the expression id to avoid possible duplicate IDs when COUNT and COUNT DISTINCT is used
+        // in the same query
+        if (!distinct() && field() instanceof NamedExpression) {
             functionId = ((NamedExpression) field()).id().toString();
         }
         return functionId;
@@ -72,8 +75,13 @@ public class Count extends AggregateFunction {
 
     @Override
     public AggregateFunctionAttribute toAttribute() {
-        if (!distinct()) {
+        // COUNT(*) gets its value from the parent aggregation on which _count is called
+        if (field() instanceof Literal) {
             return new AggregateFunctionAttribute(source(), name(), dataType(), id(), functionId(), "_count");
+        }
+        // COUNT(column) gets its value from a sibling aggregation (an exists filter agg) by calling its id and then _count on it
+        if (!distinct()) {
+            return new AggregateFunctionAttribute(source(), name(), dataType(), id(), functionId(), functionId() + "._count");
         }
         return super.toAttribute();
     }

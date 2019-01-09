@@ -40,7 +40,7 @@ include-tagged::{sql-specs}/docs.csv-spec[aggAvg]
 .Synopsis:
 [source, sql]
 --------------------------------------------------
-COUNT(expression<1>)
+COUNT([ALL] expression<1>)
 --------------------------------------------------
 
 *Input*:
@@ -52,6 +52,9 @@ COUNT(expression<1>)
 .Description:
 
 Returns the total number (count) of input values.
+In case of COUNT(*) or COUNT(<numeric_value>), _all_ values are considered (including `null` or missing ones). In case of
+COUNT(<field_name>) `null` values are not considered.
+COUNT(<field_name>) and COUNT(ALL <field_name>) are equivalent. `ALL` can only be used with a field name.
 
 ["source","sql",subs="attributes,macros"]
 --------------------------------------------------
@@ -75,7 +78,7 @@ COUNT(DISTINCT field_name<1>)
 
 .Description:
 
-Returns the total number of _distinct_ values in input values.
+Returns the total number of _distinct_ non-null values in input values.
 
 ["source","sql",subs="attributes,macros"]
 --------------------------------------------------
