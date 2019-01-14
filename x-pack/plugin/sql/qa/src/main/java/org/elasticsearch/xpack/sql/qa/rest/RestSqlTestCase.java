@@ -301,15 +301,15 @@ public abstract class RestSqlTestCase extends ESRestTestCase implements ErrorsTe
         }
     }
 
-    private Map<String, Object> runSql(String mode, String sql) throws IOException {
+    public static Map<String, Object> runSql(String mode, String sql) throws IOException {
         return runSql(mode, sql, StringUtils.EMPTY);
     }
 
-    private Map<String, Object> runSql(String mode, String sql, String suffix) throws IOException {
+    private static Map<String, Object> runSql(String mode, String sql, String suffix) throws IOException {
         return runSql(new StringEntity("{\"query\":\"" + sql + "\"" + mode(mode) + "}", ContentType.APPLICATION_JSON), suffix);
     }
 
-    protected Map<String, Object> runSql(HttpEntity sql, String suffix) throws IOException {
+    protected static Map<String, Object> runSql(HttpEntity sql, String suffix) throws IOException {
         Request request = new Request("POST", "/_sql" + suffix);
         request.addParameter("error_trace", "true");   // Helps with debugging in case something crazy happens on the server.
         request.addParameter("pretty", "true");        // Improves error reporting readability
