@@ -109,7 +109,7 @@ public class ServerQueryCliCommandTests extends ESTestCase {
         List<List<Object>> rows;
         List<ColumnInfo> columns;
         if (includeColumns) {
-            columns = singletonList(new ColumnInfo("", "field", "string", Types.VARCHAR, 0));
+            columns = singletonList(new ColumnInfo("", "field", "string", 0));
         } else {
             columns = null;
         }

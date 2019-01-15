@@ -57,7 +57,6 @@ public abstract class RestSqlTestCase extends ESRestTestCase implements ErrorsTe
         column.put("name", name);
         column.put("type", type);
         if ("jdbc".equals(mode)) {
-            column.put("jdbc_type", jdbcType.getVendorTypeNumber());
             column.put("display_size", size);
         }
         return unmodifiableMap(column);
@@ -301,15 +300,15 @@ public abstract class RestSqlTestCase extends ESRestTestCase implements ErrorsTe
         }
     }
 
-    public static Map<String, Object> runSql(String mode, String sql) throws IOException {
+    private Map<String, Object> runSql(String mode, String sql) throws IOException {
         return runSql(mode, sql, StringUtils.EMPTY);
     }
 
-    private static Map<String, Object> runSql(String mode, String sql, String suffix) throws IOException {
+    private Map<String, Object> runSql(String mode, String sql, String suffix) throws IOException {
         return runSql(new StringEntity("{\"query\":\"" + sql + "\"" + mode(mode) + "}", ContentType.APPLICATION_JSON), suffix);
     }
 
-    protected static Map<String, Object> runSql(HttpEntity sql, String suffix) throws IOException {
+    protected Map<String, Object> runSql(HttpEntity sql, String suffix) throws IOException {
         Request request = new Request("POST", "/_sql" + suffix);
         request.addParameter("error_trace", "true");   // Helps with debugging in case something crazy happens on the server.
         request.addParameter("pretty", "true");        // Improves error reporting readability
