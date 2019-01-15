@@ -139,11 +139,13 @@ public abstract class SqlProtocolTestCase extends ESRestTestCase {
         if (randomBoolean()) {
             request.addParameter("pretty", "true");
         }
-        if (randomBoolean()) {
-            // We default to JSON but we force it randomly for extra coverage
+        if (!"json".equals(format) || randomBoolean()) {
+            // since we default to JSON if a format is not specified, randomize setting it
+            // for any other format, just set it explicitly
             request.addParameter("format", format);
         }
         if (randomBoolean()) {
+            // randomly use the Accept header for the response format
             RequestOptions.Builder options = request.getOptions().toBuilder();
             options.addHeader("Accept", randomFrom("*/*", "application/" + format));
             request.setOptions(options);
