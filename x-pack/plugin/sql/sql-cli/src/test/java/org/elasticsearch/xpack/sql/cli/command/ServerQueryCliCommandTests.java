@@ -12,7 +12,6 @@ import org.elasticsearch.xpack.sql.proto.ColumnInfo;
 import org.elasticsearch.xpack.sql.proto.SqlQueryResponse;
 
 import java.sql.SQLException;
-import java.sql.Types;
 import java.util.Collections;
 import java.util.List;
 

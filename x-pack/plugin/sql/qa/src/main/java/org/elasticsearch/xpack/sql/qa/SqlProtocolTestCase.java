@@ -6,7 +6,6 @@
 
 package org.elasticsearch.xpack.sql.qa;
 
-import org.apache.http.HttpEntity;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.elasticsearch.client.Request;
@@ -29,12 +28,18 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import static org.elasticsearch.xpack.sql.proto.RequestInfo.CLIENT_IDS;
 import static org.elasticsearch.xpack.sql.qa.rest.RestSqlTestCase.mode;
 
 public abstract class SqlProtocolTestCase extends ESRestTestCase {
 
+    public void testNulls() throws IOException {
+        assertQuery("SELECT NULL", "NULL", "null", null, 0);
+    }
+    
     public void testBooleanType() throws IOException {
         assertQuery("SELECT TRUE", "TRUE", "boolean", true, 1);
+        assertQuery("SELECT FALSE", "FALSE", "boolean", false, 1);
     }
     
     public void testNumericTypes() throws IOException {
@@ -48,8 +53,8 @@ public abstract class SqlProtocolTestCase extends ESRestTestCase {
         assertQuery("SELECT -1234567890123", "-1234567890123", "long", -1234567890123L, 20);
         assertQuery("SELECT 1234567890123.34", "1234567890123.34", "double", 1234567890123.34, 25);
         assertQuery("SELECT -1234567890123.34", "-1234567890123.34", "double", -1234567890123.34, 25);
-        assertQuery("SELECT CAST(1234.345 AS REAL)", "CAST(1234.345 AS REAL)", "float", 1234.345, 15);
-        assertQuery("SELECT CAST(-1234.345 AS REAL)", "CAST(-1234.345 AS REAL)", "float", -1234.345, 15);
+        assertQuery("SELECT CAST(1234.34 AS REAL)", "CAST(1234.34 AS REAL)", "float", 1234.34f, 15);
+        assertQuery("SELECT CAST(-1234.34 AS REAL)", "CAST(-1234.34 AS REAL)", "float", -1234.34f, 15);
         assertQuery("SELECT CAST(1234567890123.34 AS FLOAT)", "CAST(1234567890123.34 AS FLOAT)", "double", 1234567890123.34, 25);
         assertQuery("SELECT CAST(-1234567890123.34 AS FLOAT)", "CAST(-1234567890123.34 AS FLOAT)", "double", -1234567890123.34, 25);
     }
@@ -94,45 +99,50 @@ public abstract class SqlProtocolTestCase extends ESRestTestCase {
         assertQuery("SELECT INTERVAL '163:59.163' MINUTE TO SECOND", "INTERVAL '163:59.163' MINUTE TO SECOND", "interval_minute_to_second",
                 "PT2H43M59.163S", 23);
     }
-    
-    private void assertQuery(String sql, String columnName, String columnType, Object columnValue, int displaySize) 
-            throws IOException {
-        assertQuery(sql, columnName, columnType, columnValue, displaySize, true);
-    }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
-    private void assertQuery(String sql, String columnName, String columnType, Object columnValue, int displaySize, boolean debug)
-            throws IOException {
+    @SuppressWarnings({ "unchecked" })
+    private void assertQuery(String sql, String columnName, String columnType, Object columnValue, int displaySize) throws IOException {
         for (Mode mode : Mode.values()) {
-            if (debug) {
-                logger.info(mode);
-            }
             Map<String, Object> response = runSql(mode.toString(), sql);
-            if (debug) {
-                logger.info(response);
-            }
-            List columns = (ArrayList) response.get("columns");
+            List<Object> columns = (ArrayList<Object>) response.get("columns");
             assertEquals(1, columns.size());
+
             Map<String, Object> column = (HashMap<String, Object>) columns.get(0);
-            assertEquals(mode != Mode.PLAIN ? 3 : 2, column.size());
             assertEquals(columnName, column.get("name"));
             assertEquals(columnType, column.get("type"));
             if (mode != Mode.PLAIN) {
+                assertEquals(3, column.size());
                 assertEquals(displaySize, column.get("display_size"));
+            } else {
+                assertEquals(2, column.size());
             }
             
-            List rows = (ArrayList) response.get("rows");
+            List<Object> rows = (ArrayList<Object>) response.get("rows");
             assertEquals(1, rows.size());
-            List row = (ArrayList) rows.get(0);
+            List<Object> row = (ArrayList<Object>) rows.get(0);
             assertEquals(1, row.size());
-            assertEquals(columnValue, row.get(0));
+
+            // from xcontent we can get float or double, depending on the conversion 
+            // method of the specific xcontent format implementation
+            if (columnValue instanceof Float && row.get(0) instanceof Double) {
+                assertEquals(columnValue, (float)((Number) row.get(0)).doubleValue());
+            } else {
+                assertEquals(columnValue, row.get(0));
+            }
         }
     }
     
-    private Map<String, Object> runSql(HttpEntity sql) throws IOException {
+    private Map<String, Object> runSql(String mode, String sql) throws IOException {
         Request request = new Request("POST", "/_sql");
+        String requestContent = "{\"query\":\"" + sql + "\"" + mode(mode) + "}";
         String format = randomFrom(XContentType.values()).name().toLowerCase(Locale.ROOT);
         
+        // add a client_id to the request
+        if (randomBoolean()) {
+            String clientId = randomFrom(randomFrom(CLIENT_IDS), randomAlphaOfLengthBetween(10, 20));
+            requestContent = new StringBuilder(requestContent)
+                    .insert(requestContent.length() - 1, ",\"client_id\":\"" + clientId + "\"").toString();
+        }
         if (randomBoolean()) {
             request.addParameter("error_trace", "true");
         }
@@ -140,8 +150,8 @@ public abstract class SqlProtocolTestCase extends ESRestTestCase {
             request.addParameter("pretty", "true");
         }
         if (!"json".equals(format) || randomBoolean()) {
-            // since we default to JSON if a format is not specified, randomize setting it
-            // for any other format, just set it explicitly
+            // since we default to JSON if a format is not specified, randomize setting it or not, explicitly;
+            // for any other format, just set the format explicitly
             request.addParameter("format", format);
         }
         if (randomBoolean()) {
@@ -150,7 +160,18 @@ public abstract class SqlProtocolTestCase extends ESRestTestCase {
             options.addHeader("Accept", randomFrom("*/*", "application/" + format));
             request.setOptions(options);
         }
-        request.setEntity(sql);
+        
+        // send the query either as body or as request parameter
+        if (randomBoolean()) {
+            request.setEntity(new StringEntity(requestContent, ContentType.APPLICATION_JSON));
+        } else {
+            request.setEntity(null);
+            request.addParameter("source", requestContent);
+            request.addParameter("source_content_type", ContentType.APPLICATION_JSON.getMimeType());
+            RequestOptions.Builder options = request.getOptions().toBuilder();
+            options.addHeader("Content-Type", "application/json");
+            request.setOptions(options);
+        }
 
         Response response = client().performRequest(request);
         try (InputStream content = response.getEntity().getContent()) {
@@ -168,9 +189,5 @@ public abstract class SqlProtocolTestCase extends ESRestTestCase {
                    return XContentHelper.convertToMap(JsonXContent.jsonXContent, content, false); 
             }
         }
-    }
-
-    private Map<String, Object> runSql(String mode, String sql) throws IOException {
-        return runSql(new StringEntity("{\"query\":\"" + sql + "\"" + mode(mode) + "}", ContentType.APPLICATION_JSON));
     }
 }
