@@ -4,7 +4,12 @@ import org.elasticsearch.gradle.test.RestIntegTestTask
 apply plugin: 'elasticsearch.standalone-test'
 
 dependencies {
-    testCompile project(':x-pack:qa')
+    // "org.elasticsearch.plugin:x-pack-core:${version}" doesn't work with idea because the testArtifacts are also here
+    testCompile project(path: xpackModule('core'), configuration: 'default')
+    testCompile project(path: xpackModule('core'), configuration: 'testArtifacts')  // to be moved in a later commit
+    if (isEclipse) {
+      testCompile project(path: xpackModule('core-tests'), configuration: 'testArtifacts')
+    }
 }
 
 // This is a top level task which we will add dependencies to below.

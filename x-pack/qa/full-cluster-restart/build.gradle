@@ -14,6 +14,15 @@ dependencies {
     // Currently needed for ml tests are using the building for datafeed and job config)
     testCompile project(path: xpackModule('core'), configuration: 'testArtifacts')
 
+    testCompile project(path: xpackModule('core'), configuration: 'testArtifacts')
+    if (isEclipse) {
+      testCompile project(path: xpackModule('core-tests'), configuration: 'testArtifacts')
+    }
+    testCompile (project(path: xpackModule('security'), configuration: 'testArtifacts')) {
+        // Need to drop the guava dependency here or we get a conflict with watcher's guava dependency.
+        // This is total #$%, but the solution is to get the SAML realm (which uses guava) out of security proper
+        exclude group: "com.google.guava", module: "guava"
+    }
     testCompile project(path: ':qa:full-cluster-restart', configuration: 'testArtifacts')
     testCompile project(':x-pack:qa')
 }

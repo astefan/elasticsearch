@@ -12,6 +12,9 @@ test.enabled = false
 dependencies {
   testCompile project(':x-pack:qa')
   testCompile ("org.elasticsearch.client:elasticsearch-rest-high-level-client:${version}")
+  if (isEclipse) {
+    testCompile project(path: xpackModule('core-tests'), configuration: 'testArtifacts')
+  }
 }
 
 Closure waitWithAuth = { NodeInfo node, AntBuilder ant ->

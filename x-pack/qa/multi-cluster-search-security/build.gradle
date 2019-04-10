@@ -4,6 +4,9 @@ apply plugin: 'elasticsearch.standalone-test'
 
 dependencies {
   testCompile project(':x-pack:qa')
+  if (isEclipse) {
+    testCompile project(path: xpackModule('core-tests'), configuration: 'testArtifacts')
+  }
 }
 
 task remoteClusterTest(type: RestIntegTestTask) {

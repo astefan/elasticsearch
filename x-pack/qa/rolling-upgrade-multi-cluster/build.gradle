@@ -5,6 +5,9 @@ apply plugin: 'elasticsearch.standalone-test'
 
 dependencies {
     testCompile project(':x-pack:qa')
+    if (isEclipse) {
+      testCompile project(path: xpackModule('core-tests'), configuration: 'testArtifacts')
+    }
 }
 
 // This is a top level task which we will add dependencies to below.
