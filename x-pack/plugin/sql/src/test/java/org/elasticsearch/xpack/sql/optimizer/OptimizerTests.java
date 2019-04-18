@@ -1343,4 +1343,51 @@ public class OptimizerTests extends ESTestCase {
         assertEquals(firstAlias, groupings.get(0));
         assertEquals(secondAlias, groupings.get(1));
     }
+    
+    // COUNT folding in local queries
+    
+    public void testCountFoldingInAggregateAndFilter() {
+        // SELECT count(*) HAVING count(*) > 1
+        
+        // count(*)
+        Count c = new Count(EMPTY, Literal.of("*", Literal.of(Source.EMPTY, 1)), false);
+        // SELECT count(*)
+        Aggregate a = new Aggregate(EMPTY, FROM(), emptyList(), Arrays.asList(c));
+        // HAVING count(*) > 1
+        LogicalPlan p = new Filter(EMPTY, a, new GreaterThan(EMPTY, c, L(1)));
+
+        p = new Project(EMPTY, p, emptyList());
+        LogicalPlan result = new Optimizer.LocalRelationCountFolding().apply(p);
+        
+        assertTrue(result instanceof Filter);
+        assertEquals(result.children().size(), 1);
+        
+        Filter f = (Filter) result;
+        assertTrue(f.child() instanceof Aggregate);
+        Aggregate agg = (Aggregate) ((OrderBy) result).child();
+        
+        assertTrue(agg.groupings().isEmpty());
+        assertTrue(agg.child() instanceof LocalRelation);
+        assertEquals(agg.aggregates().size(), 1);
+        
+        assertTrue(agg.aggregates().get(0) instanceof Literal);
+        Literal one = (Literal) agg.aggregates().get(0);
+        assertEquals(one.name(), "count(*)");
+        assertEquals(one.value(), 1L);
+        assertTrue(one.value() instanceof Long);
+        
+        assertTrue(f.condition() instanceof GreaterThan);
+        GreaterThan g = (GreaterThan) f.condition();
+        assertTrue(g.left() instanceof Literal);
+        assertTrue(g.right() instanceof Literal);
+        
+        Literal left = (Literal) g.left();
+        Literal right = (Literal) g.right();
+        assertEquals(left.name(), "count(*)");
+        assertEquals(left.value(), 1L);
+        assertTrue(left.value() instanceof Long);
+        assertEquals(right.name(), "1");
+        assertEquals(right.value(), 1);
+        assertTrue(right.value() instanceof Integer);
+    }
 }

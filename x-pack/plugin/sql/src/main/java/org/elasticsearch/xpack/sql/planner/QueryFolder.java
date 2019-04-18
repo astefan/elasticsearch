@@ -360,12 +360,17 @@ class QueryFolder extends RuleExecutor<PhysicalPlan> {
                     // not an Alias or Function means it's an Attribute so apply the same logic as above
                     } else {
                         GroupByKey matchingGroup = null;
-                        if (groupingContext != null) {
-                            matchingGroup = groupingContext.groupFor(ne);
-                            Check.notNull(matchingGroup, "Cannot find group [{}]", Expressions.name(ne));
-
-                            queryC = queryC.addColumn(
-                                new GroupByRef(matchingGroup.id(), null, ne.dataType().isDateBased()), ne.toAttribute());
+                        if (groupingContext != null/* && ne instanceof Literal == false*/) {
+                            /*if (ne instanceof Literal) {
+                                queryC = queryC.addColumn(ne.toAttribute());
+                            }
+                            else {*/
+                                matchingGroup = groupingContext.groupFor(ne);
+                                Check.notNull(matchingGroup, "Cannot find group [{}]", Expressions.name(ne));
+    
+                                queryC = queryC.addColumn(
+                                    new GroupByRef(matchingGroup.id(), null, ne.dataType().isDateBased()), ne.toAttribute());
+                            //}
                         }
                     }
                 }
