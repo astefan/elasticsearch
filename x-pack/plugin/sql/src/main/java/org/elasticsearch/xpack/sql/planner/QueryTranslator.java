@@ -5,7 +5,6 @@
  */
 package org.elasticsearch.xpack.sql.planner;
 
-import org.elasticsearch.common.time.DateFormatter;
 import org.elasticsearch.geo.geometry.Geometry;
 import org.elasticsearch.geo.geometry.Point;
 import org.elasticsearch.search.sort.SortOrder;
@@ -123,6 +122,14 @@ import static org.elasticsearch.xpack.sql.expression.Foldables.valueOf;
 import static org.elasticsearch.xpack.sql.type.DataType.DATE;
 
 final class QueryTranslator {
+    private static final String HOUR_MINUTE_TIME_FORMAT = "HH:mm";
+    private static final String SECOND_TIME_FORMAT = ":ss";
+    private static final String MILLIS_TIME_FORMAT = ".SSS";
+    private static final String DATE_FORMAT = "yyyy-MM-dd";
+    private static final String ZONE_NAME_FORMAT = "'['VV']'";
+    private static final String SEPARATOR = "'T'";
+    private static final String OFFSET_FORMAT = "XXX";
+    
     private QueryTranslator(){}
 
     private static final List<ExpressionTranslator<?>> QUERY_TRANSLATORS = Arrays.asList(
@@ -665,14 +672,28 @@ final class QueryTranslator {
 
             if (format == null && bc.right() instanceof Literal) {
                 Object l = ((Literal) bc.right()).value();
-                if (l instanceof ZonedDateTime) {
-                    DateFormatter formatter = DateFormatter.forPattern("strict_date_time");
-                    value = formatter.format((ZonedDateTime) l);
-                    format = formatter.pattern();
-                } else if (l instanceof OffsetTime){
-                    DateFormatter formatter = DateFormatter.forPattern("strict_hour_minute_second_millis"); 
-                    value = formatter.format((OffsetTime) l);
-                    format = formatter.pattern();
+                if (l instanceof ZonedDateTime || l instanceof OffsetTime) {
+                    StringBuilder formatBuilder = new StringBuilder(HOUR_MINUTE_TIME_FORMAT);
+                    ZonedDateTime dateTime = l instanceof ZonedDateTime ? (ZonedDateTime) l : null;
+                    OffsetTime time = l instanceof OffsetTime ? (OffsetTime) l : null;
+                    int seconds = dateTime != null ? dateTime.getSecond() : time.getSecond();
+                    int nanos = dateTime != null ? dateTime.getNano() : time.getNano();
+                    
+                    if (dateTime != null) {
+                        formatBuilder.insert(0, SEPARATOR).insert(0, DATE_FORMAT);
+                    }
+                    
+                    if (seconds > 0 || nanos > 0) {
+                        formatBuilder.append(SECOND_TIME_FORMAT);
+                        if (nanos > 0) {
+                            formatBuilder.append(MILLIS_TIME_FORMAT);
+                        }
+                    }
+                    formatBuilder.append(OFFSET_FORMAT);
+                    if (dateTime != null && dateTime.getZone() != dateTime.getOffset()) {
+                        formatBuilder.append(ZONE_NAME_FORMAT);
+                    }
+                    format = formatBuilder.toString();
                 }
             }
 
