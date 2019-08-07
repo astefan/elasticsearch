@@ -5,6 +5,7 @@
  */
 package org.elasticsearch.xpack.sql.planner;
 
+import org.elasticsearch.common.time.DateFormatter;
 import org.elasticsearch.geo.geometry.Geometry;
 import org.elasticsearch.geo.geometry.Point;
 import org.elasticsearch.search.sort.SortOrder;
@@ -107,6 +108,8 @@ import org.elasticsearch.xpack.sql.util.Check;
 import org.elasticsearch.xpack.sql.util.DateUtils;
 import org.elasticsearch.xpack.sql.util.ReflectionUtils;
 
+import java.time.OffsetTime;
+import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -120,7 +123,6 @@ import static org.elasticsearch.xpack.sql.expression.Foldables.valueOf;
 import static org.elasticsearch.xpack.sql.type.DataType.DATE;
 
 final class QueryTranslator {
-
     private QueryTranslator(){}
 
     private static final List<ExpressionTranslator<?>> QUERY_TRANSLATORS = Arrays.asList(
@@ -660,6 +662,19 @@ final class QueryTranslator {
             String name = nameOf(bc.left());
             Object value = valueOf(bc.right());
             String format = dateFormat(bc.left());
+
+            if (format == null && bc.right() instanceof Literal) {
+                Object l = ((Literal) bc.right()).value();
+                if (l instanceof ZonedDateTime) {
+                    DateFormatter formatter = DateFormatter.forPattern("strict_date_time");
+                    value = formatter.format((ZonedDateTime) l);
+                    format = formatter.pattern();
+                } else if (l instanceof OffsetTime){
+                    DateFormatter formatter = DateFormatter.forPattern("strict_hour_minute_second_millis"); 
+                    value = formatter.format((OffsetTime) l);
+                    format = formatter.pattern();
+                }
+            }
 
             // Possible geo optimization
             if (bc.left() instanceof StDistance && value instanceof Number) {
