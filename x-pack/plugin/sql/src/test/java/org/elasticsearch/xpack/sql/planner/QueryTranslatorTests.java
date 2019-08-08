@@ -5,6 +5,7 @@
  */
 package org.elasticsearch.xpack.sql.planner;
 
+import org.elasticsearch.common.time.DateFormatter;
 import org.elasticsearch.index.query.ExistsQueryBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.aggregations.bucket.filter.FilterAggregationBuilder;
@@ -56,6 +57,7 @@ import org.elasticsearch.xpack.sql.util.DateUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
+import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
@@ -180,6 +182,21 @@ public class QueryTranslatorTests extends ESTestCase {
         RangeQuery rq = (RangeQuery) query;
         assertEquals("date", rq.field());
         assertEquals(DateUtils.asDateTime("1969-05-13T12:34:56Z"), rq.lower());
+    }
+    
+    public void testDateRangeWithCurrentTimestamp() {
+        LogicalPlan p = plan("SELECT some.string FROM test WHERE date < CURRENT_TIMESTAMP()");
+        assertTrue(p instanceof Project);
+        p = ((Project) p).child();
+        assertTrue(p instanceof Filter);
+        Expression condition = ((Filter) p).condition();
+        QueryTranslation translation = QueryTranslator.toQuery(condition, false);
+        Query query = translation.query;
+        assertTrue(query instanceof RangeQuery);
+        RangeQuery rq = (RangeQuery) query;
+        assertEquals("date", rq.field());
+        assertEquals(TestUtils.TEST_CFG.now().withNano(DateUtils.getNanoPrecision(null, TestUtils.TEST_CFG.now().getNano())), rq.upper());
+        assertEquals("strict_date_time", rq.format());
     }
 
     public void testLikeOnInexact() {
