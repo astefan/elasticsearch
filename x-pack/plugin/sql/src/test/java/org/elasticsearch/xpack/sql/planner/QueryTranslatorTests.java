@@ -181,11 +181,31 @@ public class QueryTranslatorTests extends ESTestCase {
         assertTrue(query instanceof RangeQuery);
         RangeQuery rq = (RangeQuery) query;
         assertEquals("date", rq.field());
-        assertEquals(DateUtils.asDateTime("1969-05-13T12:34:56Z"), rq.lower());
+        assertEquals("1969-05-13T12:34:56.000Z", rq.lower());
     }
     
     public void testDateRangeWithCurrentTimestamp() {
-        LogicalPlan p = plan("SELECT some.string FROM test WHERE date < CURRENT_TIMESTAMP()");
+        testDateRangeWithCurrentFunctions("CURRENT_TIMESTAMP()", "strict_date_time", TestUtils.TEST_CFG.now());
+    }
+    
+    public void testDateRangeWithCurrentDate() {
+        testDateRangeWithCurrentFunctions("CURRENT_DATE()", "strict_date_time", DateUtils.asDateOnly(TestUtils.TEST_CFG.now()));
+    }
+    
+    public void testDateRangeWithToday() {
+        testDateRangeWithCurrentFunctions("TODAY()", "strict_date_time", DateUtils.asDateOnly(TestUtils.TEST_CFG.now()));
+    }
+    
+    public void testDateRangeWithNow() {
+        testDateRangeWithCurrentFunctions("NOW()", "strict_date_time", TestUtils.TEST_CFG.now());
+    }
+    
+    public void testDateRangeWithCurrentTime() {
+        testDateRangeWithCurrentFunctions("CURRENT_TIME()", "strict_hour_minute_second_millis", TestUtils.TEST_CFG.now());
+    }
+    
+    private void testDateRangeWithCurrentFunctions(String function, String pattern, ZonedDateTime now) {
+        LogicalPlan p = plan("SELECT some.string FROM test WHERE date < " + function);
         assertTrue(p instanceof Project);
         p = ((Project) p).child();
         assertTrue(p instanceof Filter);
@@ -195,8 +215,8 @@ public class QueryTranslatorTests extends ESTestCase {
         assertTrue(query instanceof RangeQuery);
         RangeQuery rq = (RangeQuery) query;
         assertEquals("date", rq.field());
-        assertEquals(TestUtils.TEST_CFG.now().withNano(DateUtils.getNanoPrecision(null, TestUtils.TEST_CFG.now().getNano())), rq.upper());
-        assertEquals("strict_date_time", rq.format());
+        assertEquals(DateFormatter.forPattern(pattern).format(now.withNano(DateUtils.getNanoPrecision(null, now.getNano()))), rq.upper());
+        assertEquals(pattern, rq.format());
     }
 
     public void testLikeOnInexact() {

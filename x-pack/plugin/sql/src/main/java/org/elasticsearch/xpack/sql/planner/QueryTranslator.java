@@ -663,17 +663,23 @@ final class QueryTranslator {
             Object value = valueOf(bc.right());
             String format = dateFormat(bc.left());
 
-            if (format == null && bc.right() instanceof Literal) {
-                Object l = ((Literal) bc.right()).value();
-                if (l instanceof ZonedDateTime) {
-                    DateFormatter formatter = DateFormatter.forPattern("strict_date_time");
-                    value = formatter.format((ZonedDateTime) l);
-                    format = formatter.pattern();
-                } else if (l instanceof OffsetTime){
-                    DateFormatter formatter = DateFormatter.forPattern("strict_hour_minute_second_millis"); 
-                    value = formatter.format((OffsetTime) l);
-                    format = formatter.pattern();
+            // for a date constant comparison, we need to use a format for the date, to make sure that the format is the same
+            // no matter the timezone provided by the user
+            if ((bc instanceof LessThan || bc instanceof LessThanOrEqual || bc instanceof GreaterThan || bc instanceof GreaterThanOrEqual)
+                    && (value instanceof ZonedDateTime || value instanceof OffsetTime)
+                    && format == null) {
+                DateFormatter formatter;
+                if (value instanceof ZonedDateTime) {
+                    formatter = DateFormatter.forPattern("strict_date_time");
+                    // RangeQueryBuilder accepts an Object as its parameter, but it will call .toString() on the ZonedDateTime instance
+                    // which can have a slightly different format depending on the ZoneId used to create the ZonedDateTime
+                    // Since RangeQueryBuilder can handle date as String as well, we'll format it as String and provide the format as well.
+                    value = formatter.format((ZonedDateTime) value);
+                } else {
+                    formatter = DateFormatter.forPattern("strict_hour_minute_second_millis"); 
+                    value = formatter.format((OffsetTime) value);
                 }
+                format = formatter.pattern();
             }
 
             // Possible geo optimization
