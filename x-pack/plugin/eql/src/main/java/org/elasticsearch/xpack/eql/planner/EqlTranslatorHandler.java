@@ -4,22 +4,24 @@
  * you may not use this file except in compliance with the Elastic License.
  */
 
-package org.elasticsearch.xpack.ql.planner;
+package org.elasticsearch.xpack.eql.planner;
 
 import org.elasticsearch.xpack.ql.expression.Expression;
 import org.elasticsearch.xpack.ql.expression.FieldAttribute;
 import org.elasticsearch.xpack.ql.expression.NamedExpression;
 import org.elasticsearch.xpack.ql.expression.function.scalar.ScalarFunction;
+import org.elasticsearch.xpack.ql.planner.ExpressionTranslator;
+import org.elasticsearch.xpack.ql.planner.TranslatorHandler;
 import org.elasticsearch.xpack.ql.querydsl.query.Query;
 import org.elasticsearch.xpack.ql.querydsl.query.ScriptQuery;
 import org.elasticsearch.xpack.ql.type.DataType;
 import org.elasticsearch.xpack.ql.type.DataTypeConverter;
 
-public class QlTranslatorHandler implements TranslatorHandler {
+public class EqlTranslatorHandler implements TranslatorHandler {
 
     @Override
     public Query asQuery(Expression e) {
-        return ExpressionTranslators.toQuery(e, this);
+        return QueryTranslator.toQuery(e, this);
     }
 
     @Override

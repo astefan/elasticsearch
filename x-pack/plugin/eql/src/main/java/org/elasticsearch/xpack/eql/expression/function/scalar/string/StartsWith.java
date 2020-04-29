@@ -57,6 +57,14 @@ public class StartsWith extends ScalarFunction {
         return isStringAndExact(pattern, sourceText(), ParamOrdinal.SECOND);
     }
 
+    public Expression field() {
+        return source;
+    }
+
+    public Expression pattern() {
+        return pattern;
+    }
+
     @Override
     protected Pipe makePipe() {
         return new StartsWithFunctionPipe(source(), this, Expressions.pipe(source), Expressions.pipe(pattern));

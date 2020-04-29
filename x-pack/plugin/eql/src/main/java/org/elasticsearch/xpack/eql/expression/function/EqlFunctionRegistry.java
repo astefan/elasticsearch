@@ -34,8 +34,8 @@ public class EqlFunctionRegistry extends FunctionRegistry {
 
     private static FunctionDefinition[][] functions() {
         return new FunctionDefinition[][] {
-        // Scalar functions
-        // String
+            // Scalar functions
+            // String
             new FunctionDefinition[] {
                 def(Between.class, Between::new, 2, "between"),
                 def(CIDRMatch.class, CIDRMatch::new, "cidrmatch"),
@@ -46,15 +46,15 @@ public class EqlFunctionRegistry extends FunctionRegistry {
                 def(ToString.class, ToString::new, "string"),
                 def(StringContains.class, StringContains::new, "stringcontains"),
                 def(Substring.class, Substring::new, "substring"),
-                def(Wildcard.class, Wildcard::new, "wildcard"),
+                def(Wildcard.class, Wildcard::new, "wildcard")
             },
-        // Arithmetic
+            // Arithmetic
             new FunctionDefinition[] {
-                    def(Add.class, Add::new, "add"),
-                    def(Div.class, Div::new, "divide"),
-                    def(Mod.class, Mod::new, "modulo"),
-                    def(Mul.class, Mul::new, "multiply"),
-                    def(Sub.class, Sub::new, "subtract"),
+                def(Add.class, Add::new, "add"),
+                def(Div.class, Div::new, "divide"),
+                def(Mod.class, Mod::new, "modulo"),
+                def(Mul.class, Mul::new, "multiply"),
+                def(Sub.class, Sub::new, "subtract")
             }
         };
     }

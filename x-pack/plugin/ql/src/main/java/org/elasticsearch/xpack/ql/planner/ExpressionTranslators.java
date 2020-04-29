@@ -16,9 +16,7 @@ import org.elasticsearch.xpack.ql.expression.predicate.Range;
 import org.elasticsearch.xpack.ql.expression.predicate.fulltext.MatchQueryPredicate;
 import org.elasticsearch.xpack.ql.expression.predicate.fulltext.MultiMatchQueryPredicate;
 import org.elasticsearch.xpack.ql.expression.predicate.fulltext.StringQueryPredicate;
-import org.elasticsearch.xpack.ql.expression.predicate.logical.And;
 import org.elasticsearch.xpack.ql.expression.predicate.logical.Not;
-import org.elasticsearch.xpack.ql.expression.predicate.logical.Or;
 import org.elasticsearch.xpack.ql.expression.predicate.operator.comparison.BinaryComparison;
 import org.elasticsearch.xpack.ql.expression.predicate.operator.comparison.Equals;
 import org.elasticsearch.xpack.ql.expression.predicate.operator.comparison.GreaterThan;
@@ -63,36 +61,6 @@ public final class ExpressionTranslators {
 
     public static final String DATE_FORMAT = "strict_date_time";
     public static final String TIME_FORMAT = "strict_hour_minute_second_millis";
-
-
-    public static final List<ExpressionTranslator<?>> QUERY_TRANSLATORS = List.of(
-            new BinaryComparisons(),
-            new Ranges(),
-            new BinaryLogic(),
-            new Nots(),
-            new Likes(),
-            new InComparisons(),
-            new StringQueries(),
-            new Matches(),
-            new MultiMatches(),
-            new Scalars()
-            );
-
-    public static Query toQuery(Expression e) {
-        return toQuery(e, new QlTranslatorHandler());
-    }
-
-    public static Query toQuery(Expression e, TranslatorHandler handler) {
-        Query translation = null;
-        for (ExpressionTranslator<?> translator : QUERY_TRANSLATORS) {
-            translation = translator.translate(e, handler);
-            if (translation != null) {
-                return translation;
-            }
-        }
-
-        throw new QlIllegalArgumentException("Don't know how to translate {} {}", e.nodeName(), e);
-    }
 
     public static Object valueOf(Expression e) {
         if (e.foldable()) {
@@ -168,21 +136,6 @@ public final class ExpressionTranslators {
 
         public static Query doTranslate(MultiMatchQueryPredicate q, TranslatorHandler handler) {
             return new MultiMatchQuery(q.source(), q.query(), q.fields(), q);
-        }
-    }
-
-    public static class BinaryLogic extends ExpressionTranslator<org.elasticsearch.xpack.ql.expression.predicate.logical.BinaryLogic> {
-
-        @Override
-        protected Query asQuery(org.elasticsearch.xpack.ql.expression.predicate.logical.BinaryLogic e, TranslatorHandler handler) {
-            if (e instanceof And) {
-                return and(e.source(), toQuery(e.left(), handler), toQuery(e.right(), handler));
-            }
-            if (e instanceof Or) {
-                return or(e.source(), toQuery(e.left(), handler), toQuery(e.right(), handler));
-            }
-
-            return null;
         }
     }
 
