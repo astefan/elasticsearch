@@ -5,6 +5,7 @@
  */
 package org.elasticsearch.xpack.sql.plugin;
 
+import org.apache.log4j.Logger;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.support.ActionFilters;
 import org.elasticsearch.action.support.HandledTransportAction;
@@ -48,7 +49,7 @@ public class TransportSqlQueryAction extends HandledTransportAction<SqlQueryRequ
     private final ClusterService clusterService;
     private final PlanExecutor planExecutor;
     private final SqlLicenseChecker sqlLicenseChecker;
-
+    private static final Logger logger = Logger.getLogger(TransportSqlQueryAction.class);
     @Inject
     public TransportSqlQueryAction(Settings settings, ClusterService clusterService, TransportService transportService,
                                    ThreadPool threadPool, ActionFilters actionFilters, PlanExecutor planExecutor,

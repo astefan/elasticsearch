@@ -101,7 +101,9 @@ public class FieldHitExtractor extends AbstractFieldHitExtractor {
 
         if (dataType == GEO_POINT) {
             try {
-                GeoPoint geoPoint = GeoUtils.parseGeoPoint(values, true);
+                @SuppressWarnings("unchecked")
+                Map<String, Object> map = (Map<String, Object>) values;
+                GeoPoint geoPoint =  GeoUtils.parseGeoPoint(map.get("coordinates"), true);
                 return new GeoShape(geoPoint.lon(), geoPoint.lat());
             } catch (ElasticsearchParseException ex) {
                 throw new SqlIllegalArgumentException("Cannot parse geo_point value [{}] (returned by [{}])", values, fieldName());

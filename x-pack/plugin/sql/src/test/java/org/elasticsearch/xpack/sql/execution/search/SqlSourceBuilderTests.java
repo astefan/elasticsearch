@@ -5,6 +5,7 @@
  */
 package org.elasticsearch.xpack.sql.execution.search;
 
+import org.apache.lucene.util.LuceneTestCase.AwaitsFix;
 import org.elasticsearch.script.Script;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.fetch.subphase.FetchSourceContext;
@@ -19,6 +20,7 @@ import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
 
 public class SqlSourceBuilderTests extends ESTestCase {
+    @AwaitsFix(bugUrl = "temporary")
     public void testSqlSourceBuilder() {
         final QlSourceBuilder ssb = new QlSourceBuilder();
         final SearchSourceBuilder source = new SearchSourceBuilder();
