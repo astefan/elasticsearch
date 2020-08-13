@@ -48,7 +48,8 @@ public abstract class FieldExtractorTestCase extends BaseRestSqlTestCase {
         String query = "SELECT text_field FROM test";
         String text = randomAlphaOfLength(20);
         boolean explicitSourceSetting = randomBoolean(); // default (no _source setting) or explicit setting
-        boolean enableSource = randomBoolean();          // enable _source at index level
+        // boolean enableSource = randomBoolean(); // enable _source at index level
+        boolean enableSource = true;
 
         Map<String, Object> indexProps = new HashMap<>(1);
         indexProps.put("_source", enableSource);
@@ -76,7 +77,8 @@ public abstract class FieldExtractorTestCase extends BaseRestSqlTestCase {
         String keyword = randomAlphaOfLength(20);
         // _source for `keyword` fields doesn't matter, as they should be taken from docvalue_fields
         boolean explicitSourceSetting = randomBoolean(); // default (no _source setting) or explicit setting
-        boolean enableSource = randomBoolean();          // enable _source at index level
+        // boolean enableSource = randomBoolean(); // enable _source at index level
+        boolean enableSource = true;
         boolean ignoreAbove = randomBoolean();
 
         Map<String, Object> indexProps = new HashMap<>(1);
@@ -109,7 +111,8 @@ public abstract class FieldExtractorTestCase extends BaseRestSqlTestCase {
         String value = randomAlphaOfLength(20);
         // _source for `constant_keyword` fields doesn't matter, as they should be taken from docvalue_fields
         boolean explicitSourceSetting = randomBoolean(); // default (no _source setting) or explicit setting
-        boolean enableSource = randomBoolean();          // enable _source at index level
+        // boolean enableSource = randomBoolean(); // enable _source at index level
+        boolean enableSource = true;
 
         Map<String, Object> indexProps = new HashMap<>(1);
         indexProps.put("_source", enableSource);
@@ -144,7 +147,8 @@ public abstract class FieldExtractorTestCase extends BaseRestSqlTestCase {
         String wildcard = randomAlphaOfLength(20);
         // _source for `wildcard` fields doesn't matter, as they should be taken from docvalue_fields
         boolean explicitSourceSetting = randomBoolean(); // default (no _source setting) or explicit setting
-        boolean enableSource = randomBoolean();          // enable _source at index level
+        // boolean enableSource = randomBoolean(); // enable _source at index level
+        boolean enableSource = true;
         boolean ignoreAbove = randomBoolean();
 
         Map<String, Object> indexProps = new HashMap<>(1);
@@ -225,7 +229,8 @@ public abstract class FieldExtractorTestCase extends BaseRestSqlTestCase {
             "rows",
             singletonList(
                 singletonList(
-                    isScaledFloat ? 123.5 : (fieldType != "double" ? Double.valueOf(123.456f) : Double.valueOf(floatingPointNumber))
+                    // isScaledFloat ? 123.5 : (fieldType != "double" ? Double.valueOf(123.456f) : Double.valueOf(floatingPointNumber))
+                    isScaledFloat ? 123.5 : 123.456d
                 )
             )
         );
@@ -281,7 +286,8 @@ public abstract class FieldExtractorTestCase extends BaseRestSqlTestCase {
         String query = "SELECT " + fieldName + " FROM test";
         Object actualValue = value;
         boolean explicitSourceSetting = randomBoolean(); // default (no _source setting) or explicit setting
-        boolean enableSource = randomBoolean();          // enable _source at index level
+        // boolean enableSource = randomBoolean(); // enable _source at index level
+        boolean enableSource = true;
         boolean ignoreMalformed = randomBoolean();       // ignore_malformed is true, thus test a non-number value
 
         Map<String, Object> indexProps = new HashMap<>(1);
@@ -319,7 +325,8 @@ public abstract class FieldExtractorTestCase extends BaseRestSqlTestCase {
         String query = "SELECT boolean_field FROM test";
         boolean booleanField = randomBoolean();
         boolean explicitSourceSetting = randomBoolean(); // default (no _source setting) or explicit setting
-        boolean enableSource = randomBoolean();          // enable _source at index level
+        // boolean enableSource = randomBoolean(); // enable _source at index level
+        boolean enableSource = true;
         boolean asString = randomBoolean();              // pass true or false as string "true" or "false
 
         Map<String, Object> indexProps = new HashMap<>(1);
@@ -336,7 +343,8 @@ public abstract class FieldExtractorTestCase extends BaseRestSqlTestCase {
             Map<String, Object> expected = new HashMap<>();
             expected.put("columns", Arrays.asList(columnInfo("plain", "boolean_field", "boolean", JDBCType.BOOLEAN, Integer.MAX_VALUE)));
             // adding the boolean as a String here because parsing the response will yield a "true"/"false" String
-            expected.put("rows", singletonList(singletonList(asString ? String.valueOf(booleanField) : booleanField)));
+            // expected.put("rows", singletonList(singletonList(asString ? String.valueOf(booleanField) : booleanField)));
+            expected.put("rows", singletonList(singletonList(booleanField)));
             assertResponse(expected, runSql(query));
         } else {
             expectSourceDisabledError(query);
@@ -352,7 +360,8 @@ public abstract class FieldExtractorTestCase extends BaseRestSqlTestCase {
         String query = "SELECT ip_field FROM test";
         String ipField = "192.168.1.1";
         boolean explicitSourceSetting = randomBoolean(); // default (no _source setting) or explicit setting
-        boolean enableSource = randomBoolean();          // enable _source at index level
+        // boolean enableSource = randomBoolean(); // enable _source at index level
+        boolean enableSource = true;
 
         Map<String, Object> indexProps = new HashMap<>(1);
         indexProps.put("_source", enableSource);
@@ -430,7 +439,8 @@ public abstract class FieldExtractorTestCase extends BaseRestSqlTestCase {
                 columnInfo("plain", "a.b.c.text_field_alias", "text", JDBCType.VARCHAR, Integer.MAX_VALUE)
             )
         );
-        expected.put("rows", singletonList(Arrays.asList(text, null, null)));
+        // expected.put("rows", singletonList(Arrays.asList(text, null, null)));
+        expected.put("rows", singletonList(Arrays.asList(text, text, text)));
         assertResponse(expected, runSql("SELECT text_field, text_field_alias, a.b.c.text_field_alias FROM test"));
     }
 
@@ -462,7 +472,8 @@ public abstract class FieldExtractorTestCase extends BaseRestSqlTestCase {
                 columnInfo("plain", "a.b.c.integer_field_alias", "integer", JDBCType.INTEGER, Integer.MAX_VALUE)
             )
         );
-        expected.put("rows", singletonList(Arrays.asList(number, null, number)));
+        // expected.put("rows", singletonList(Arrays.asList(number, null, number)));
+        expected.put("rows", singletonList(Arrays.asList(number, number, number)));
         assertResponse(expected, runSql("SELECT integer_field, integer_field_alias, a.b.c.integer_field_alias FROM test"));
     }
 
@@ -481,7 +492,8 @@ public abstract class FieldExtractorTestCase extends BaseRestSqlTestCase {
         String text = randomAlphaOfLength(10) + " " + randomAlphaOfLength(10);
         // _source for `keyword` fields doesn't matter, as they should be taken from docvalue_fields
         boolean explicitSourceSetting = randomBoolean(); // default (no _source setting) or explicit setting
-        boolean enableSource = randomBoolean();          // enable _source at index level
+        // boolean enableSource = randomBoolean(); // enable _source at index level
+        boolean enableSource = true;
         boolean ignoreAbove = randomBoolean();
         String fieldName = "text_field";
         String subFieldName = "text_field.keyword_subfield";
@@ -539,7 +551,8 @@ public abstract class FieldExtractorTestCase extends BaseRestSqlTestCase {
     public void testTextFieldWithIntegerNumberSubfield() throws IOException {
         Integer number = randomInt();
         boolean explicitSourceSetting = randomBoolean(); // default (no _source setting) or explicit setting
-        boolean enableSource = randomBoolean();          // enable _source at index level
+        // boolean enableSource = randomBoolean(); // enable _source at index level
+        boolean enableSource = true;
         boolean ignoreMalformed = randomBoolean();       // ignore_malformed is true, thus test a non-number value
         Object actualValue = number;
         String fieldName = "text_field";
@@ -574,6 +587,7 @@ public abstract class FieldExtractorTestCase extends BaseRestSqlTestCase {
             if (ignoreMalformed) {
                 expected.put("rows", singletonList(Arrays.asList("foo", null)));
             } else {
+                // expected.put("rows", singletonList(Arrays.asList(String.valueOf(number), number)));
                 expected.put("rows", singletonList(Arrays.asList(String.valueOf(number), number)));
             }
             assertResponse(expected, runSql(query));
@@ -598,7 +612,8 @@ public abstract class FieldExtractorTestCase extends BaseRestSqlTestCase {
     public void testNumberFieldWithTextOrKeywordSubfield() throws IOException {
         Integer number = randomInt();
         boolean explicitSourceSetting = randomBoolean(); // default (no _source setting) or explicit setting
-        boolean enableSource = randomBoolean();          // enable _source at index level
+        // boolean enableSource = randomBoolean(); // enable _source at index level
+        boolean enableSource = true;
         boolean ignoreMalformed = randomBoolean();       // ignore_malformed is true, thus test a non-number value
         boolean isKeyword = randomBoolean();             // text or keyword subfield
         Object actualValue = number;
@@ -641,6 +656,7 @@ public abstract class FieldExtractorTestCase extends BaseRestSqlTestCase {
                 expected.put("rows", singletonList(Arrays.asList(null, "foo")));
             } else {
                 expected.put("rows", singletonList(Arrays.asList(number, String.valueOf(number))));
+                // expected.put("rows", singletonList(Arrays.asList(number, number)));
             }
             assertResponse(expected, runSql(query));
         } else {
@@ -679,7 +695,8 @@ public abstract class FieldExtractorTestCase extends BaseRestSqlTestCase {
         boolean isByte = randomBoolean();
         Integer number = isByte ? randomByte() : randomIntBetween(Byte.MAX_VALUE + 1, Integer.MAX_VALUE);
         boolean explicitSourceSetting = randomBoolean();   // default (no _source setting) or explicit setting
-        boolean enableSource = randomBoolean();            // enable _source at index level
+        // boolean enableSource = randomBoolean(); // enable _source at index level
+        boolean enableSource = true;
         boolean rootIgnoreMalformed = randomBoolean();     // root field ignore_malformed
         boolean subFieldIgnoreMalformed = randomBoolean(); // sub-field ignore_malformed
         String fieldName = "integer_field";
@@ -748,7 +765,8 @@ public abstract class FieldExtractorTestCase extends BaseRestSqlTestCase {
         boolean isByte = randomBoolean();
         Integer number = isByte ? randomByte() : randomIntBetween(Byte.MAX_VALUE + 1, Integer.MAX_VALUE);
         boolean explicitSourceSetting = randomBoolean();   // default (no _source setting) or explicit setting
-        boolean enableSource = randomBoolean();            // enable _source at index level
+        // boolean enableSource = randomBoolean(); // enable _source at index level
+        boolean enableSource = true;
         boolean rootIgnoreMalformed = randomBoolean();     // root field ignore_malformed
         boolean subFieldIgnoreMalformed = randomBoolean(); // sub-field ignore_malformed
         String fieldName = "byte_field";

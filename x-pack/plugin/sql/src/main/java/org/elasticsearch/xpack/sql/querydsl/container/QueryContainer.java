@@ -26,7 +26,6 @@ import org.elasticsearch.xpack.ql.querydsl.query.MatchAll;
 import org.elasticsearch.xpack.ql.querydsl.query.NestedQuery;
 import org.elasticsearch.xpack.ql.querydsl.query.Query;
 import org.elasticsearch.xpack.ql.tree.Source;
-import org.elasticsearch.xpack.ql.type.DataTypes;
 import org.elasticsearch.xpack.sql.SqlIllegalArgumentException;
 import org.elasticsearch.xpack.sql.execution.search.SourceGenerator;
 import org.elasticsearch.xpack.sql.expression.function.Score;
@@ -347,6 +346,7 @@ public class QueryContainer {
          *       }
          *     }
          */
+        /* removed temporarily to test fields API in its unfinished form yet (only extraction from _source atm)
         if (fieldAttr.field().isAlias() == false) {
             while (actualField.parent() != null
                     && actualField.parent().field().getDataType() != DataTypes.OBJECT
@@ -355,6 +355,7 @@ public class QueryContainer {
                 actualField = actualField.parent();
             }
         }
+        */
         while (rootField.parent() != null) {
             fullFieldName.insert(0, ".").insert(0, rootField.parent().field().getName());
             rootField = rootField.parent();

@@ -117,8 +117,7 @@ public abstract class AbstractFieldHitExtractor implements HitExtractor {
         out.writeBoolean(arrayLeniency);
     }
 
-    @Override
-    public Object extract(SearchHit hit) {
+    public Object oldExtract(SearchHit hit) {
         Object value = null;
         if (useDocValue) {
             DocumentField field = hit.field(fieldName);
@@ -150,6 +149,67 @@ public abstract class AbstractFieldHitExtractor implements HitExtractor {
             }
         }
         return value;
+    }
+
+    @Override
+    public Object extract(SearchHit hit) {
+        // nested fields
+        if (hitName != null) {
+            return oldExtract(hit);
+        } else {
+            // non-nested fields
+            // if the field was ignored because it was malformed and ignore_malformed was turned on
+            if (fullFieldName != null
+                    && hit.getFields().containsKey(IgnoredFieldMapper.NAME)
+                    && isFromDocValuesOnly(dataType) == false
+                    && dataType.isNumeric()) {
+                /*
+                 * ignore_malformed makes sense for extraction from _source for numeric fields only.
+                 * And we check here that the data type is actually a numeric one to rule out
+                 * any non-numeric sub-fields (for which the "parent" field should actually be extracted from _source).
+                 * For example, in the case of a malformed number, a "byte" field with "ignore_malformed: true"
+                 * with a "text" sub-field should return "null" for the "byte" parent field and the actual malformed
+                 * data for the "text" sub-field. Also, the _ignored section of the response contains the full field
+                 * name, thus the need to do the comparison with that and not only the field name.
+                 */
+                if (hit.getFields().get(IgnoredFieldMapper.NAME).getValues().contains(fullFieldName)) {
+                    return null;
+                }
+            }
+            Object value = null;
+            DocumentField field = hit.field(fieldName);
+            if (field != null) {
+                value = unwrapFieldsMultiValue(field.getValues());
+            }
+            return value;
+        }
+    }
+
+    protected Object unwrapFieldsMultiValue(Object values) {
+        if (values == null) {
+            return null;
+        }
+        if (values instanceof List) {
+            List<?> list = (List<?>) values;
+            if (list.isEmpty()) {
+                return null;
+            } else {
+                if (isPrimitive(list) == false) {
+                    if (list.size() == 1 || arrayLeniency) {
+                        return unwrapFieldsMultiValue(list.get(0));
+                    } else {
+                        throw new QlIllegalArgumentException("Arrays (returned by [{}]) are not supported", fieldName);
+                    }
+                }
+            }
+        }
+
+        Object unwrapped = unwrapCustomValue(values);
+        if (unwrapped != null) {
+            return unwrapped;
+        }
+
+        return values;
     }
 
     protected Object unwrapMultiValue(Object values) {
