@@ -33,9 +33,9 @@ public class SqlStreamInput extends NamedWriteableAwareStreamInput {
 
         // version check first
         Version ver = Version.readVersion(delegate);
-        if (version.compareTo(ver) != 0) {
-            throw new SqlIllegalArgumentException("Unsupported cursor version [{}], expected [{}]", ver, version);
-        }
+//        if (version.compareTo(ver) != 0) {
+//            throw new SqlIllegalArgumentException("Unsupported cursor version [{}], expected [{}]", ver, version);
+//        }
         delegate.setVersion(version);
         // configuration settings
         zoneId = delegate.readZoneId();

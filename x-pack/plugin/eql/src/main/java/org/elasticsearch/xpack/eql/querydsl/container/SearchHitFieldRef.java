@@ -65,11 +65,12 @@ public class SearchHitFieldRef implements FieldExtraction {
         if (hitName != null) {
             return;
         }
-        if (docValue) {
+        sourceBuilder.addFetchField(name, format(dataType));
+        /*if (docValue) {
             sourceBuilder.addDocField(name, format(dataType));
         } else {
             sourceBuilder.addSourceField(name);
-        }
+        }*/
     }
 
     @Override
