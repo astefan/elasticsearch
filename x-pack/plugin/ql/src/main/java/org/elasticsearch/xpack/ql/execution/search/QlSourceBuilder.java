@@ -24,6 +24,7 @@ public class QlSourceBuilder {
     // The LinkedHashMaps preserve the order of the fields in the response
     private final Set<String> sourceFields = new LinkedHashSet<>();
     private final Set<FieldAndFormat> docFields = new LinkedHashSet<>();
+    private final Set<FieldAndFormat> fetchFields = new LinkedHashSet<>();
     private final Map<String, Script> scriptFields = new LinkedHashMap<>();
 
     boolean trackScores = false;
@@ -53,6 +54,13 @@ public class QlSourceBuilder {
     }
 
     /**
+     * Retrieve the requested field using the "fields" API
+     */
+    public void addFetchField(String field, String format) {
+        fetchFields.add(new FieldAndFormat(field, format));
+    }
+
+    /**
      * Return the given field as a script field with the supplied script
      */
     public void addScriptField(String name, Script script) {
@@ -65,14 +73,16 @@ public class QlSourceBuilder {
      */
     public void build(SearchSourceBuilder sourceBuilder) {
         sourceBuilder.trackScores(this.trackScores);
-        if (!sourceFields.isEmpty()) {
-            sourceBuilder.fetchSource(sourceFields.toArray(Strings.EMPTY_ARRAY), null);
-        }
-        docFields.forEach(field -> sourceBuilder.docValueField(field.field, field.format));
+//        if (!sourceFields.isEmpty()) {
+//            sourceBuilder.fetchSource(sourceFields.toArray(Strings.EMPTY_ARRAY), null);
+//        }
+//        docFields.forEach(field -> sourceBuilder.docValueField(field.field, field.format));
+        fetchFields.forEach(field -> sourceBuilder.fetchField(field.field, field.format));
         scriptFields.forEach(sourceBuilder::scriptField);
     }
 
     public boolean noSource() {
-        return sourceFields.isEmpty();
+        return false;
+        //return sourceFields.isEmpty();
     }
 }

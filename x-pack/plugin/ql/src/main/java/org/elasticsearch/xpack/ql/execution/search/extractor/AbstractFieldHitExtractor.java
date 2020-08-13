@@ -39,6 +39,7 @@ import static org.elasticsearch.xpack.ql.type.DataTypes.SCALED_FLOAT;
 public abstract class AbstractFieldHitExtractor implements HitExtractor {
 
     private static final Version SWITCHED_FROM_DOCVALUES_TO_SOURCE_EXTRACTION = Version.V_7_4_0;
+    private static final Version SWITCHED_FROM_SOURCE_EXTRACTION_TO_FIELDS_API = Version.V_7_10_0;
 
     /**
      * Source extraction requires only the (relative) field name, without its parent path.
@@ -85,14 +86,19 @@ public abstract class AbstractFieldHitExtractor implements HitExtractor {
 
     protected AbstractFieldHitExtractor(StreamInput in) throws IOException {
         fieldName = in.readString();
-        if (in.getVersion().onOrAfter(SWITCHED_FROM_DOCVALUES_TO_SOURCE_EXTRACTION)) {
-            fullFieldName = in.readOptionalString();
+        if (in.getVersion().onOrAfter(SWITCHED_FROM_DOCVALUES_TO_SOURCE_EXTRACTION) &&
+            in.getVersion().before(SWITCHED_FROM_SOURCE_EXTRACTION_TO_FIELDS_API)) {
+                fullFieldName = in.readOptionalString();
         } else {
             fullFieldName = null;
         }
         String typeName = in.readOptionalString();
         dataType = typeName != null ? loadTypeFromName(typeName) : null;
-        useDocValue = in.readBoolean();
+        //if (in.getVersion().before(SWITCHED_FROM_SOURCE_EXTRACTION_TO_FIELDS_API)) {
+            useDocValue = in.readBoolean();
+        //} else {
+        //    useDocValue = false; // for "fields" API usage, extraction from _source or from docvalues doesn't matter
+        //}
         hitName = in.readOptionalString();
         arrayLeniency = in.readBoolean();
         path = sourcePath(fieldName, useDocValue, hitName);
@@ -108,17 +114,19 @@ public abstract class AbstractFieldHitExtractor implements HitExtractor {
     @Override
     public void writeTo(StreamOutput out) throws IOException {
         out.writeString(fieldName);
-        if (out.getVersion().onOrAfter(SWITCHED_FROM_DOCVALUES_TO_SOURCE_EXTRACTION)) {
-            out.writeOptionalString(fullFieldName);
+        if (out.getVersion().onOrAfter(SWITCHED_FROM_DOCVALUES_TO_SOURCE_EXTRACTION) &&
+            out.getVersion().before(SWITCHED_FROM_SOURCE_EXTRACTION_TO_FIELDS_API)) {
+                out.writeOptionalString(fullFieldName);
         }
         out.writeOptionalString(dataType == null ? null : dataType.typeName());
-        out.writeBoolean(useDocValue);
+        //if (out.getVersion().before(SWITCHED_FROM_SOURCE_EXTRACTION_TO_FIELDS_API)) {
+            out.writeBoolean(useDocValue);
+        //}
         out.writeOptionalString(hitName);
         out.writeBoolean(arrayLeniency);
     }
 
-    @Override
-    public Object extract(SearchHit hit) {
+    public Object oldExtract(SearchHit hit) {
         Object value = null;
         if (useDocValue) {
             DocumentField field = hit.field(fieldName);
@@ -150,6 +158,67 @@ public abstract class AbstractFieldHitExtractor implements HitExtractor {
             }
         }
         return value;
+    }
+
+    @Override
+    public Object extract(SearchHit hit) {
+        // nested fields
+        //if (hitName != null) {
+        //    return oldExtract(hit);
+        //} else {
+            // non-nested fields
+            // if the field was ignored because it was malformed and ignore_malformed was turned on
+            if (fullFieldName != null
+                    && hit.getFields().containsKey(IgnoredFieldMapper.NAME)
+                    && isFromDocValuesOnly(dataType) == false
+                    && dataType.isNumeric()) {
+                /*
+                 * ignore_malformed makes sense for extraction from _source for numeric fields only.
+                 * And we check here that the data type is actually a numeric one to rule out
+                 * any non-numeric sub-fields (for which the "parent" field should actually be extracted from _source).
+                 * For example, in the case of a malformed number, a "byte" field with "ignore_malformed: true"
+                 * with a "text" sub-field should return "null" for the "byte" parent field and the actual malformed
+                 * data for the "text" sub-field. Also, the _ignored section of the response contains the full field
+                 * name, thus the need to do the comparison with that and not only the field name.
+                 */
+                if (hit.getFields().get(IgnoredFieldMapper.NAME).getValues().contains(fullFieldName)) {
+                    return null;
+                }
+            }
+            Object value = null;
+            DocumentField field = hit.field(fieldName);
+            if (field != null) {
+                value = unwrapFieldsMultiValue(field.getValues());
+            }
+            return value;
+        //}
+    }
+
+    protected Object unwrapFieldsMultiValue(Object values) {
+        if (values == null) {
+            return null;
+        }
+        if (values instanceof List) {
+            List<?> list = (List<?>) values;
+            if (list.isEmpty()) {
+                return null;
+            } else {
+                if (isPrimitive(list) == false) {
+                    if (list.size() == 1 || arrayLeniency) {
+                        return unwrapFieldsMultiValue(list.get(0));
+                    } else {
+                        throw new QlIllegalArgumentException("Arrays (returned by [{}]) are not supported", fieldName);
+                    }
+                }
+            }
+        }
+
+        Object unwrapped = unwrapCustomValue(values);
+        if (unwrapped != null) {
+            return unwrapped;
+        }
+
+        return values;
     }
 
     protected Object unwrapMultiValue(Object values) {

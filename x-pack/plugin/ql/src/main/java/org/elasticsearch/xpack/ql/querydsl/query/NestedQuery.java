@@ -115,6 +115,33 @@ public class NestedQuery extends Query {
             ihb.setSize(MAX_INNER_HITS);
             ihb.setName(path + "_" + COUNTER++);
 
+            for (Map.Entry<String, Map.Entry<Boolean, String>> entry : fields.entrySet()) {
+                if (entry.getValue().getKey()) {
+                    ihb.addFetchField(entry.getKey(), entry.getValue().getValue());
+                }
+                else {
+                    ihb.addFetchField(entry.getKey());
+                }
+            }
+            ihb.setFetchSourceContext(FetchSourceContext.DO_NOT_FETCH_SOURCE);
+            ihb.setStoredFieldNames(NO_STORED_FIELD);
+
+            query.innerHit(ihb);
+        }
+
+        return query;
+    }
+
+    public QueryBuilder oldAsBuilder() {
+        // disable score
+        NestedQueryBuilder query = nestedQuery(path, child.asBuilder(), ScoreMode.None);
+
+        if (!fields.isEmpty()) {
+            InnerHitBuilder ihb = new InnerHitBuilder();
+            ihb.setSize(0);
+            ihb.setSize(MAX_INNER_HITS);
+            ihb.setName(path + "_" + COUNTER++);
+
             boolean noSourceNeeded = true;
             List<String> sourceFields = new ArrayList<>();
 
