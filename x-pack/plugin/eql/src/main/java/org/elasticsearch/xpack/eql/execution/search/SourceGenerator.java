@@ -57,7 +57,7 @@ public abstract class SourceGenerator {
 
         sorting(container, source);
 
-        // disable the source
+        // disable the source, as we rely on "fields" API
         source.fetchSource(false);
 
         if (container.limit() != null) {
@@ -123,12 +123,6 @@ public abstract class SourceGenerator {
                 sortBuilder.order(sortable.direction().asOrder());
                 source.sort(sortBuilder);
             }
-        }
-    }
-
-    private static void optimize(QueryContainer query, SearchSourceBuilder builder) {
-        if (query.shouldTrackHits()) {
-            builder.trackTotalHits(true);
         }
     }
 }

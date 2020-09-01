@@ -39,6 +39,7 @@ import static org.elasticsearch.xpack.ql.type.DataTypes.SCALED_FLOAT;
 public abstract class AbstractFieldHitExtractor implements HitExtractor {
 
     private static final Version SWITCHED_FROM_DOCVALUES_TO_SOURCE_EXTRACTION = Version.V_7_4_0;
+    private static final Version SWITCHED_FROM_SOURCE_EXTRACTION_TO_FIELDS_API = Version.V_7_10_0;
 
     /**
      * Source extraction requires only the (relative) field name, without its parent path.
@@ -85,14 +86,19 @@ public abstract class AbstractFieldHitExtractor implements HitExtractor {
 
     protected AbstractFieldHitExtractor(StreamInput in) throws IOException {
         fieldName = in.readString();
-        if (in.getVersion().onOrAfter(SWITCHED_FROM_DOCVALUES_TO_SOURCE_EXTRACTION)) {
-            fullFieldName = in.readOptionalString();
+        if (in.getVersion().onOrAfter(SWITCHED_FROM_DOCVALUES_TO_SOURCE_EXTRACTION) &&
+            in.getVersion().before(SWITCHED_FROM_SOURCE_EXTRACTION_TO_FIELDS_API)) {
+                fullFieldName = in.readOptionalString();
         } else {
             fullFieldName = null;
         }
         String typeName = in.readOptionalString();
         dataType = typeName != null ? loadTypeFromName(typeName) : null;
-        useDocValue = in.readBoolean();
+        if (in.getVersion().before(SWITCHED_FROM_SOURCE_EXTRACTION_TO_FIELDS_API)) {
+            useDocValue = in.readBoolean();
+        } else {
+            useDocValue = false; // for "fields" API usage, extraction from _source or from docvalues doesn't matter
+        }
         hitName = in.readOptionalString();
         arrayLeniency = in.readBoolean();
         path = sourcePath(fieldName, useDocValue, hitName);
@@ -108,11 +114,14 @@ public abstract class AbstractFieldHitExtractor implements HitExtractor {
     @Override
     public void writeTo(StreamOutput out) throws IOException {
         out.writeString(fieldName);
-        if (out.getVersion().onOrAfter(SWITCHED_FROM_DOCVALUES_TO_SOURCE_EXTRACTION)) {
-            out.writeOptionalString(fullFieldName);
+        if (out.getVersion().onOrAfter(SWITCHED_FROM_DOCVALUES_TO_SOURCE_EXTRACTION) &&
+            out.getVersion().before(SWITCHED_FROM_SOURCE_EXTRACTION_TO_FIELDS_API)) {
+                out.writeOptionalString(fullFieldName);
         }
         out.writeOptionalString(dataType == null ? null : dataType.typeName());
-        out.writeBoolean(useDocValue);
+        if (out.getVersion().before(SWITCHED_FROM_SOURCE_EXTRACTION_TO_FIELDS_API)) {
+            out.writeBoolean(useDocValue);
+        }
         out.writeOptionalString(hitName);
         out.writeBoolean(arrayLeniency);
     }
