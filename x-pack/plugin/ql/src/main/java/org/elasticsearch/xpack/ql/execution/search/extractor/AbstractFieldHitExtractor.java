@@ -5,6 +5,7 @@
  */
 package org.elasticsearch.xpack.ql.execution.search.extractor;
 
+import org.apache.log4j.Logger;
 import org.elasticsearch.Version;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.collect.Tuple;
@@ -86,31 +87,33 @@ public abstract class AbstractFieldHitExtractor implements HitExtractor {
     }
 
     protected AbstractFieldHitExtractor(StreamInput in) throws IOException {
-        fieldName = in.readString();
+        Logger log = Logger.getLogger(this.getClass());
+        fieldName = in.readString(); log.info("-------------------- fieldName: " + fieldName);
         if (in.getVersion().onOrAfter(SWITCHED_FROM_DOCVALUES_TO_SOURCE_EXTRACTION) &&
             in.getVersion().before(SWITCHED_FROM_SOURCE_EXTRACTION_TO_FIELDS_API)) {
-            fullFieldName = in.readOptionalString();
+            fullFieldName = in.readOptionalString(); log.info("-------------------- fullFieldName: " + fullFieldName);
             delegate = new SourceDocValuesFieldHitExtractor();
         } else {
-            fullFieldName = null;
-            in.readOptionalString();
+            fullFieldName = null; log.info("-------------------- fullFieldName: " + null);
+            //log.info("-------------------- readOptionalString: " + in.readOptionalString());
             delegate = new FieldsApiFieldHitExtractor();
         }
-        String typeName = in.readOptionalString();
+        String typeName = in.readOptionalString(); log.info("-------------------- typeName: " + typeName);
         dataType = typeName != null ? loadTypeFromName(typeName) : null;
         if (in.getVersion().before(SWITCHED_FROM_SOURCE_EXTRACTION_TO_FIELDS_API)) {
-            useDocValue = in.readBoolean();
+            useDocValue = in.readBoolean(); log.info("-------------------- useDocValue: " + useDocValue);
         } else {
-            in.readBoolean();
+            //in.readBoolean();
+            log.info("-------------------- useDocValue manual: " + false);
             useDocValue = false; // for "fields" API usage, extraction from _source or from docvalues doesn't matter
         }
-        hitName = in.readOptionalString();
-        arrayLeniency = in.readBoolean();
-        zoneId = readZoneId(in);
+        hitName = in.readOptionalString(); log.info("-------------------- hitName: " + hitName);
+        arrayLeniency = in.readBoolean(); log.info("-------------------- arrayLeniency: " + arrayLeniency);
+        zoneId = readZoneId(in); log.info("-------------------- zoneId: " + zoneId);
         if (in.getVersion().before(SWITCHED_FROM_SOURCE_EXTRACTION_TO_FIELDS_API)) {
-            path = sourcePath(fieldName, useDocValue, hitName);
+            path = sourcePath(fieldName, useDocValue, hitName); log.info("-------------------- path: " + path);
         } else {
-            path = null;
+            path = null; log.info("-------------------- path: " + path);
         }
     }
 
