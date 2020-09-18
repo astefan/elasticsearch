@@ -88,6 +88,7 @@ public abstract class AbstractFieldHitExtractor implements HitExtractor {
 
     protected AbstractFieldHitExtractor(StreamInput in) throws IOException {
         Logger log = Logger.getLogger(this.getClass());
+        log.info("----------------------------- in version: " + in.getVersion());
         fieldName = in.readString(); log.info("-------------------- fieldName: " + fieldName);
         if (in.getVersion().onOrAfter(SWITCHED_FROM_DOCVALUES_TO_SOURCE_EXTRACTION) &&
             in.getVersion().before(SWITCHED_FROM_SOURCE_EXTRACTION_TO_FIELDS_API)) {
@@ -126,6 +127,8 @@ public abstract class AbstractFieldHitExtractor implements HitExtractor {
     @Override
     public void writeTo(StreamOutput out) throws IOException {
         out.writeString(fieldName);
+        Logger log = Logger.getLogger(this.getClass());
+        log.info("----------------------------- out version: " + out.getVersion());
         if (out.getVersion().onOrAfter(SWITCHED_FROM_DOCVALUES_TO_SOURCE_EXTRACTION) &&
             out.getVersion().before(SWITCHED_FROM_SOURCE_EXTRACTION_TO_FIELDS_API)) {
             out.writeOptionalString(fullFieldName);
