@@ -101,21 +101,20 @@ public abstract class AbstractFieldHitExtractor implements HitExtractor {
         }
         String typeName = in.readOptionalString(); log.info("-------------------- typeName: " + typeName);
         dataType = typeName != null ? loadTypeFromName(typeName) : null;
-        if (in.getVersion().before(SWITCHED_FROM_SOURCE_EXTRACTION_TO_FIELDS_API)) {
+        //if (in.getVersion().before(SWITCHED_FROM_SOURCE_EXTRACTION_TO_FIELDS_API)) {
             useDocValue = in.readBoolean(); log.info("-------------------- useDocValue: " + useDocValue);
-        } else {
-            //in.readBoolean();
-            log.info("-------------------- useDocValue manual: " + false);
-            useDocValue = false; // for "fields" API usage, extraction from _source or from docvalues doesn't matter
-        }
+        //} else {
+        //    log.info("-------------------- useDocValue manual: " + false);
+        //    useDocValue = false; // for "fields" API usage, extraction from _source or from docvalues doesn't matter
+        //}
         hitName = in.readOptionalString(); log.info("-------------------- hitName: " + hitName);
         arrayLeniency = in.readBoolean(); log.info("-------------------- arrayLeniency: " + arrayLeniency);
         zoneId = readZoneId(in); log.info("-------------------- zoneId: " + zoneId);
-        if (in.getVersion().before(SWITCHED_FROM_SOURCE_EXTRACTION_TO_FIELDS_API)) {
+        //if (in.getVersion().before(SWITCHED_FROM_SOURCE_EXTRACTION_TO_FIELDS_API)) {
             path = sourcePath(fieldName, useDocValue, hitName); log.info("-------------------- path: " + path);
-        } else {
-            path = null; log.info("-------------------- path: " + path);
-        }
+        //} else {
+        //    path = null; log.info("-------------------- path: " + path);
+        //}
     }
 
     protected DataType loadTypeFromName(String typeName) {
@@ -134,9 +133,9 @@ public abstract class AbstractFieldHitExtractor implements HitExtractor {
             out.writeOptionalString(fullFieldName);
         }
         out.writeOptionalString(dataType == null ? null : dataType.typeName());
-        if (out.getVersion().before(SWITCHED_FROM_SOURCE_EXTRACTION_TO_FIELDS_API)) {
+        //if (out.getVersion().before(SWITCHED_FROM_SOURCE_EXTRACTION_TO_FIELDS_API)) {
             out.writeBoolean(useDocValue);
-        }
+        //}
         out.writeOptionalString(hitName);
         out.writeBoolean(arrayLeniency);
     }
