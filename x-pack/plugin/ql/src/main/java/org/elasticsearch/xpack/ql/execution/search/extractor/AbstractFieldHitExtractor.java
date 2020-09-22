@@ -131,6 +131,9 @@ public abstract class AbstractFieldHitExtractor implements HitExtractor {
         //}
         out.writeOptionalString(hitName);
         out.writeBoolean(arrayLeniency);
+        
+        // new stuff !!! //
+        out.writeZoneId(zoneId);
     }
 
     @Override
