@@ -88,8 +88,11 @@ public abstract class AbstractFieldHitExtractor implements HitExtractor {
     protected AbstractFieldHitExtractor(StreamInput in) throws IOException {
         System.out.println("------ in version= " + in.getVersion());
         fieldName = in.readString();
-        if (in.getVersion().onOrAfter(SWITCHED_FROM_DOCVALUES_TO_SOURCE_EXTRACTION) &&
-            in.getVersion().before(SWITCHED_FROM_SOURCE_EXTRACTION_TO_FIELDS_API)) {
+        if (in.getVersion()
+            .onOrAfter(
+                SWITCHED_FROM_DOCVALUES_TO_SOURCE_EXTRACTION
+            )/* &&
+             in.getVersion().before(SWITCHED_FROM_SOURCE_EXTRACTION_TO_FIELDS_API)*/) {
             fullFieldName = in.readOptionalString();
             delegate = new SourceDocValuesFieldHitExtractor();
         } else {
@@ -123,8 +126,11 @@ public abstract class AbstractFieldHitExtractor implements HitExtractor {
     public void writeTo(StreamOutput out) throws IOException {
         out.writeString(fieldName);
         System.out.println("------ out version= " + out.getVersion());
-        if (out.getVersion().onOrAfter(SWITCHED_FROM_DOCVALUES_TO_SOURCE_EXTRACTION) &&
-            out.getVersion().before(SWITCHED_FROM_SOURCE_EXTRACTION_TO_FIELDS_API)) {
+        if (out.getVersion()
+            .onOrAfter(
+                SWITCHED_FROM_DOCVALUES_TO_SOURCE_EXTRACTION
+            )/* &&
+             out.getVersion().before(SWITCHED_FROM_SOURCE_EXTRACTION_TO_FIELDS_API)*/) {
             out.writeOptionalString(fullFieldName);
         }
         out.writeOptionalString(dataType == null ? null : dataType.typeName());
@@ -135,7 +141,7 @@ public abstract class AbstractFieldHitExtractor implements HitExtractor {
         out.writeBoolean(arrayLeniency);
         
         // new stuff !!! //
-        out.writeZoneId(zoneId);
+        //out.writeZoneId(zoneId);
     }
 
     @Override
