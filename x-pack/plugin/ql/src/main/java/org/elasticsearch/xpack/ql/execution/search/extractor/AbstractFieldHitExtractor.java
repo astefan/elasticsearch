@@ -5,7 +5,6 @@
  */
 package org.elasticsearch.xpack.ql.execution.search.extractor;
 
-import org.apache.log4j.Logger;
 import org.elasticsearch.Version;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.collect.Tuple;
@@ -87,31 +86,27 @@ public abstract class AbstractFieldHitExtractor implements HitExtractor {
     }
 
     protected AbstractFieldHitExtractor(StreamInput in) throws IOException {
-        Logger log = Logger.getLogger(this.getClass());
-        log.info("----------------------------- in version: " + in.getVersion());
-        fieldName = in.readString(); log.info("-------------------- fieldName: " + fieldName);
+        fieldName = in.readString();
         if (in.getVersion().onOrAfter(SWITCHED_FROM_DOCVALUES_TO_SOURCE_EXTRACTION) &&
             in.getVersion().before(SWITCHED_FROM_SOURCE_EXTRACTION_TO_FIELDS_API)) {
-            fullFieldName = in.readOptionalString(); log.info("-------------------- fullFieldName: " + fullFieldName);
+            fullFieldName = in.readOptionalString();
             delegate = new SourceDocValuesFieldHitExtractor();
         } else {
-            fullFieldName = null; log.info("-------------------- fullFieldName: " + null);
-            //log.info("-------------------- readOptionalString: " + in.readOptionalString());
+            fullFieldName = null;
             delegate = new FieldsApiFieldHitExtractor();
         }
-        String typeName = in.readOptionalString(); log.info("-------------------- typeName: " + typeName);
+        String typeName = in.readOptionalString();
         dataType = typeName != null ? loadTypeFromName(typeName) : null;
         //if (in.getVersion().before(SWITCHED_FROM_SOURCE_EXTRACTION_TO_FIELDS_API)) {
-            useDocValue = in.readBoolean(); log.info("-------------------- useDocValue: " + useDocValue);
+            useDocValue = in.readBoolean();
         //} else {
-        //    log.info("-------------------- useDocValue manual: " + false);
         //    useDocValue = false; // for "fields" API usage, extraction from _source or from docvalues doesn't matter
         //}
-        hitName = in.readOptionalString(); log.info("-------------------- hitName: " + hitName);
-        arrayLeniency = in.readBoolean(); log.info("-------------------- arrayLeniency: " + arrayLeniency);
-        zoneId = readZoneId(in); log.info("-------------------- zoneId: " + zoneId);
+        hitName = in.readOptionalString();
+        arrayLeniency = in.readBoolean();
+        zoneId = readZoneId(in);
         //if (in.getVersion().before(SWITCHED_FROM_SOURCE_EXTRACTION_TO_FIELDS_API)) {
-            path = sourcePath(fieldName, useDocValue, hitName); log.info("-------------------- path: " + path);
+            path = sourcePath(fieldName, useDocValue, hitName);
         //} else {
         //    path = null; log.info("-------------------- path: " + path);
         //}
@@ -126,8 +121,6 @@ public abstract class AbstractFieldHitExtractor implements HitExtractor {
     @Override
     public void writeTo(StreamOutput out) throws IOException {
         out.writeString(fieldName);
-        Logger log = Logger.getLogger(this.getClass());
-        log.info("----------------------------- out version: " + out.getVersion());
         if (out.getVersion().onOrAfter(SWITCHED_FROM_DOCVALUES_TO_SOURCE_EXTRACTION) &&
             out.getVersion().before(SWITCHED_FROM_SOURCE_EXTRACTION_TO_FIELDS_API)) {
             out.writeOptionalString(fullFieldName);
