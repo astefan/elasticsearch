@@ -231,7 +231,7 @@ public class SearchRequest extends ActionRequest implements IndicesRequest.Repla
         if (in.getVersion().onOrAfter(Version.V_7_0_0)) {
             ccsMinimizeRoundtrips = in.readBoolean();
         }
-        if (in.getVersion().onOrAfter(Version.V_8_0_0)) {
+        if (in.getVersion().onOrAfter(Version.V_7_12_0)) {
             if (in.readBoolean()) {
                 minCompatibleShardNode = Version.readVersion(in);
             }
@@ -270,7 +270,7 @@ public class SearchRequest extends ActionRequest implements IndicesRequest.Repla
         if (out.getVersion().onOrAfter(Version.V_7_0_0)) {
             out.writeBoolean(ccsMinimizeRoundtrips);
         }
-        if (out.getVersion().onOrAfter(Version.V_8_0_0)) {
+        if (out.getVersion().onOrAfter(Version.V_7_12_0)) {
             out.writeBoolean(minCompatibleShardNode != null);
             if (minCompatibleShardNode != null) {
                 Version.writeVersion(minCompatibleShardNode, out);
