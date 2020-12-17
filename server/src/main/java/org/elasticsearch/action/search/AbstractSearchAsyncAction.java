@@ -259,7 +259,7 @@ abstract class AbstractSearchAsyncAction<Result extends SearchPhaseResult> exten
         return true;
     }
 
-    private void performPhaseOnShard(final int shardIndex, final SearchShardIterator shardIt, final SearchShardTarget shard) {
+    protected void performPhaseOnShard(final int shardIndex, final SearchShardIterator shardIt, final SearchShardTarget shard) {
         /*
          * We capture the thread that this phase is starting on. When we are called back after executing the phase, we are either on the
          * same thread (because we never went async, or the same thread was selected from the thread pool) or a different thread. If we
@@ -328,11 +328,10 @@ abstract class AbstractSearchAsyncAction<Result extends SearchPhaseResult> exten
                                                 SearchShardTarget shard,
                                                 SearchActionListener<Result> listener);
 
-    private void fork(final Runnable runnable) {
+    protected void fork(final Runnable runnable) {
         executor.execute(new AbstractRunnable() {
             @Override
             public void onFailure(Exception e) {
-
             }
 
             @Override
@@ -551,7 +550,11 @@ abstract class AbstractSearchAsyncAction<Result extends SearchPhaseResult> exten
     private void successfulShardExecution(SearchShardIterator shardsIt) {
         final int remainingOpsOnIterator;
         if (shardsIt.skip()) {
-            remainingOpsOnIterator = shardsIt.remaining();
+            // It's possible that we're skipping a shard that's unavailable
+            // but its range was available in the IndexMetadata, in that
+            // case the shardsIt.remaining() would be 0, expectedTotalOps
+            // accounts for unavailable shards too.
+            remainingOpsOnIterator = Math.max(shardsIt.remaining(), 1);
         } else {
             remainingOpsOnIterator = shardsIt.remaining() + 1;
         }
