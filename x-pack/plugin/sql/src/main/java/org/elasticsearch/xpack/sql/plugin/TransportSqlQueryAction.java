@@ -113,15 +113,27 @@ public class TransportSqlQueryAction extends HandledTransportAction<SqlQueryRequ
         List<List<Object>> rows = new ArrayList<>();
         page.rowSet().forEachRow(rowView -> {
             List<Object> row = new ArrayList<>(rowView.columnCount());
-            rowView.forEachColumn(row::add);
+            rowView.forEachColumn(r -> row.add(value(r, request.mode())));
             rows.add(unmodifiableList(row));
         });
 
         return new SqlQueryResponse(
                 Cursors.encodeToString(page.next(), zoneId),
                 request.mode(),
+                request.version(),
                 request.columnar(),
                 header,
                 rows);
+    }
+
+    @SuppressWarnings("rawtypes")
+    private static Object value(Object r, Mode mode) {
+        // Intervals and GeoShape instances
+        if (r instanceof GeoShape) {
+            return r.toString();
+        } else if (r instanceof Interval && mode != CLI) {
+            return ((Interval) r).value();
+        }
+        return r;
     }
 }
