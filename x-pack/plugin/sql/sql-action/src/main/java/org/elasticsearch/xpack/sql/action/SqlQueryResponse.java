@@ -138,7 +138,7 @@ public class SqlQueryResponse extends ActionResponse implements ToXContentObject
             out.writeVInt(rows.get(0).size());
             for (List<Object> row : rows) {
                 for (Object value : row) {
-
+                	System.out.println("---- " + value);
                     out.writeGenericValue(value);
                 }
             }
