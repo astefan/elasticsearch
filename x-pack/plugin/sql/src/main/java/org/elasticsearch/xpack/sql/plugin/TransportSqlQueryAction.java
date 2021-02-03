@@ -5,6 +5,15 @@
  */
 package org.elasticsearch.xpack.sql.plugin;
 
+import static java.util.Collections.unmodifiableList;
+import static org.elasticsearch.action.ActionListener.wrap;
+import static org.elasticsearch.xpack.sql.plugin.Transports.clusterName;
+import static org.elasticsearch.xpack.sql.plugin.Transports.username;
+
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.support.ActionFilters;
 import org.elasticsearch.action.support.HandledTransportAction;
@@ -24,24 +33,19 @@ import org.elasticsearch.xpack.sql.action.SqlQueryAction;
 import org.elasticsearch.xpack.sql.action.SqlQueryRequest;
 import org.elasticsearch.xpack.sql.action.SqlQueryResponse;
 import org.elasticsearch.xpack.sql.execution.PlanExecutor;
+import org.elasticsearch.xpack.sql.expression.literal.geo.GeoShape;
+import org.elasticsearch.xpack.sql.expression.literal.interval.Interval;
 import org.elasticsearch.xpack.sql.proto.ColumnInfo;
 import org.elasticsearch.xpack.sql.proto.Mode;
-import org.elasticsearch.xpack.sql.session.SqlConfiguration;
 import org.elasticsearch.xpack.sql.session.Cursor;
 import org.elasticsearch.xpack.sql.session.Cursor.Page;
 import org.elasticsearch.xpack.sql.session.Cursors;
 import org.elasticsearch.xpack.sql.session.RowSet;
 import org.elasticsearch.xpack.sql.session.SchemaRowSet;
+import org.elasticsearch.xpack.sql.session.SqlConfiguration;
 import org.elasticsearch.xpack.sql.type.SqlDataTypes;
 
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
-
-import static java.util.Collections.unmodifiableList;
-import static org.elasticsearch.action.ActionListener.wrap;
-import static org.elasticsearch.xpack.sql.plugin.Transports.clusterName;
-import static org.elasticsearch.xpack.sql.plugin.Transports.username;
+import static org.elasticsearch.xpack.sql.proto.Mode.CLI;
 
 public class TransportSqlQueryAction extends HandledTransportAction<SqlQueryRequest, SqlQueryResponse> {
     private final SecurityContext securityContext;
@@ -113,7 +117,8 @@ public class TransportSqlQueryAction extends HandledTransportAction<SqlQueryRequ
         List<List<Object>> rows = new ArrayList<>();
         page.rowSet().forEachRow(rowView -> {
             List<Object> row = new ArrayList<>(rowView.columnCount());
-            rowView.forEachColumn(row::add);
+            //rowView.forEachColumn(row::add);
+            rowView.forEachColumn(r -> row.add(value(r, request.mode())));
             rows.add(unmodifiableList(row));
         });
 
@@ -123,5 +128,16 @@ public class TransportSqlQueryAction extends HandledTransportAction<SqlQueryRequ
                 request.columnar(),
                 header,
                 rows);
+    }
+
+    @SuppressWarnings("rawtypes")
+    private static Object value(Object r, Mode mode) {
+        // Intervals and GeoShape instances
+        if (r instanceof GeoShape) {
+            return r.toString();
+        } else if (r instanceof Interval && mode != CLI) {
+            return ((Interval) r).value();
+        }
+        return r;
     }
 }
