@@ -117,7 +117,8 @@ public class TransportSqlQueryAction extends HandledTransportAction<SqlQueryRequ
         List<List<Object>> rows = new ArrayList<>();
         page.rowSet().forEachRow(rowView -> {
             List<Object> row = new ArrayList<>(rowView.columnCount());
-            rowView.forEachColumn(r -> row.add(value(r, request.mode())));
+            rowView.forEachColumn(row::add);
+            //rowView.forEachColumn(r -> row.add(value(r, request.mode())));
             rows.add(unmodifiableList(row));
         });
 
