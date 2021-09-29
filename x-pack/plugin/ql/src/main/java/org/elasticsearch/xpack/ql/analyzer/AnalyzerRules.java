@@ -55,8 +55,6 @@ public final class AnalyzerRules {
             return false;
         }
     }
-
-
     public abstract static class AnalyzerRule<SubPlan extends LogicalPlan> extends Rule<SubPlan, LogicalPlan> {
 
         // transformUp (post-order) - that is first children and then the node

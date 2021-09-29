@@ -21,12 +21,15 @@ import org.antlr.v4.runtime.dfa.DFA;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.xpack.ql.expression.Expression;
+import org.elasticsearch.xpack.ql.expression.UnresolvedAttribute;
 import org.elasticsearch.xpack.ql.plan.logical.LogicalPlan;
 
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -38,6 +41,8 @@ public class EqlParser {
     private static final Logger log = LogManager.getLogger();
 
     private final boolean DEBUG = false;
+    private final Set<UnresolvedAttribute> allOptionals = new HashSet<>();
+    private final Set<Expression> keyOptionals = new HashSet<>();
 
     /**
      * Parses an EQL statement into execution plan
@@ -63,6 +68,14 @@ public class EqlParser {
         }
 
         return invokeParser(expression, params, EqlBaseParser::singleExpression, AstBuilder::expression);
+    }
+
+    public Set<UnresolvedAttribute> allOptionals() {
+        return allOptionals;
+    }
+
+    public Set<Expression> keyOptionals() {
+        return keyOptionals;
     }
 
     private <T> T invokeParser(String eql, ParserParams params,
@@ -103,7 +116,7 @@ public class EqlParser {
                 log.info("Parse tree {} " + tree.toStringTree());
             }
 
-            return visitor.apply(new AstBuilder(params), tree);
+            return visitor.apply(new AstBuilder(params, allOptionals, keyOptionals), tree);
         } catch (StackOverflowError e) {
             throw new ParsingException("EQL statement is too large, " +
                 "causing stack overflow when generating the parsing tree: [{}]", eql);

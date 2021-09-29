@@ -8,12 +8,22 @@
 package org.elasticsearch.xpack.eql.parser;
 
 import org.elasticsearch.xpack.eql.parser.EqlBaseParser.SingleStatementContext;
+import org.elasticsearch.xpack.ql.expression.Expression;
+import org.elasticsearch.xpack.ql.expression.UnresolvedAttribute;
 import org.elasticsearch.xpack.ql.plan.logical.LogicalPlan;
+
+import java.util.Set;
+
+import static java.util.Collections.emptySet;
 
 public class AstBuilder extends LogicalPlanBuilder {
 
     AstBuilder(ParserParams params) {
-        super(params);
+        super(params, emptySet(), emptySet());
+    }
+
+    AstBuilder(ParserParams params, Set<UnresolvedAttribute> allOptionals, Set<Expression> keyOptionals) {
+        super(params, allOptionals, keyOptionals);
     }
 
     @Override
