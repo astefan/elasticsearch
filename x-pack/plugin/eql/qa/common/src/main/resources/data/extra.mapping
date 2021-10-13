@@ -21,10 +21,10 @@
         }
       }
     },
-    "no_docs_field": {
+    "optional_field_mapping_only": {
       "type": "keyword"
     },
-    "default_null_value_field": {
+    "optional_field_default_null": {
       "type": "keyword",
       "null_value": "NULL"
     }

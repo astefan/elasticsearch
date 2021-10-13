@@ -7,6 +7,7 @@
 
 package org.elasticsearch.xpack.eql.analysis;
 
+import org.elasticsearch.xpack.ql.analyzer.AnalyzerRules.AddMissingEqualsToBoolField;
 import org.elasticsearch.xpack.ql.common.Failure;
 import org.elasticsearch.xpack.ql.expression.Attribute;
 import org.elasticsearch.xpack.ql.expression.Expression;
@@ -19,6 +20,7 @@ import org.elasticsearch.xpack.ql.expression.function.UnresolvedFunction;
 import org.elasticsearch.xpack.ql.plan.logical.LogicalPlan;
 import org.elasticsearch.xpack.ql.rule.RuleExecutor;
 import org.elasticsearch.xpack.ql.session.Configuration;
+import org.elasticsearch.xpack.ql.type.DataTypes;
 
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -26,7 +28,6 @@ import java.util.Set;
 
 import static java.util.Arrays.asList;
 import static org.elasticsearch.xpack.eql.analysis.AnalysisUtils.resolveAgainstList;
-import org.elasticsearch.xpack.ql.analyzer.AnalyzerRules.AddMissingEqualsToBoolField;
 
 public class Analyzer extends RuleExecutor<LogicalPlan> {
 
@@ -88,7 +89,7 @@ public class Analyzer extends RuleExecutor<LogicalPlan> {
                 Expression named = resolveAgainstList(u, childrenOutput);
                 // if it's not resolved (it doesn't exist in mappings) and it's an optional field, replace it with "null"
                 if (named == null && optionals.contains(u)) {
-                    named = Literal.NULL;
+                    named = new Literal(u.source(), null, DataTypes.NULL);
                 }
                 // if resolved, return it; otherwise keep it in place to be resolved later
                 if (named != null) {

@@ -13,7 +13,13 @@ import org.elasticsearch.xpack.ql.plan.logical.LogicalPlan;
 
 import java.util.Set;
 
+import static java.util.Collections.emptySet;
+
 public class AstBuilder extends LogicalPlanBuilder {
+
+    AstBuilder(ParserParams params) {
+        super(params, emptySet());
+    }
 
     AstBuilder(ParserParams params, Set<UnresolvedAttribute> optionals) {
         super(params, optionals);

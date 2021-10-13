@@ -26,7 +26,7 @@ import org.elasticsearch.xpack.ql.expression.function.FunctionRegistry;
 import org.elasticsearch.xpack.ql.index.IndexResolver;
 import org.elasticsearch.xpack.ql.plan.logical.LogicalPlan;
 
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 import static org.elasticsearch.action.ActionListener.wrap;
@@ -45,7 +45,7 @@ public class EqlSession {
     private final Planner planner;
     private final CircuitBreaker circuitBreaker;
 
-    private final Set<UnresolvedAttribute> optionals = new HashSet<>();
+    private final Set<UnresolvedAttribute> optionals = new LinkedHashSet<>();
 
     public EqlSession(Client client, EqlConfiguration cfg, IndexResolver indexResolver, PreAnalyzer preAnalyzer, PostAnalyzer postAnalyzer,
                       FunctionRegistry functionRegistry, Verifier verifier, Optimizer optimizer, Planner planner,

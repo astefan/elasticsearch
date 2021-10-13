@@ -17,7 +17,6 @@ import org.elasticsearch.xpack.eql.expression.predicate.operator.comparison.Inse
 import org.elasticsearch.xpack.eql.parser.EqlBaseParser.ArithmeticUnaryContext;
 import org.elasticsearch.xpack.eql.parser.EqlBaseParser.ComparisonContext;
 import org.elasticsearch.xpack.eql.parser.EqlBaseParser.DereferenceContext;
-import org.elasticsearch.xpack.eql.parser.EqlBaseParser.ExpressionContext;
 import org.elasticsearch.xpack.eql.parser.EqlBaseParser.FunctionExpressionContext;
 import org.elasticsearch.xpack.eql.parser.EqlBaseParser.JoinKeysContext;
 import org.elasticsearch.xpack.eql.parser.EqlBaseParser.LogicalBinaryContext;
@@ -26,6 +25,7 @@ import org.elasticsearch.xpack.eql.parser.EqlBaseParser.PredicateContext;
 import org.elasticsearch.xpack.ql.QlIllegalArgumentException;
 import org.elasticsearch.xpack.ql.expression.Attribute;
 import org.elasticsearch.xpack.ql.expression.Expression;
+import org.elasticsearch.xpack.ql.expression.Expressions;
 import org.elasticsearch.xpack.ql.expression.Literal;
 import org.elasticsearch.xpack.ql.expression.UnresolvedAttribute;
 import org.elasticsearch.xpack.ql.expression.function.Function;
@@ -54,6 +54,7 @@ import org.elasticsearch.xpack.ql.type.DataTypes;
 import org.elasticsearch.xpack.ql.util.StringUtils;
 
 import java.time.ZoneId;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -94,14 +95,17 @@ public class ExpressionBuilder extends IdentifierBuilder {
             return emptyList();
         }
         try {
-            List<ExpressionContext> keys = ctx.expression();
-            for (ExpressionContext k : keys) {
-                if ("?".equals(k.getStart().getText())) {
-                    Source source = source(k);
-                    throw new ParsingException(source, "Cannot use unsupported optional field [{}] as a join key", source.text());
-                }
+            Set<UnresolvedAttribute> optionalsOld = new LinkedHashSet<>(optionals);
+            List<Attribute> keys = visitList(this, ctx.expression(), Attribute.class);
+            Set<UnresolvedAttribute> optionalsNew = new LinkedHashSet<>(optionals);
+            optionalsNew.removeAll(optionalsOld);
+            if (optionalsNew.isEmpty() == false) {
+                String plural = optionalsNew.size() > 1 ? "s" : StringUtils.EMPTY;
+                String articol = optionalsNew.size() > 1 ? "" : "a ";
+                throw new ParsingException(optionalsNew.iterator().next().source(), "Cannot use unsupported optional field" + plural 
+                                           + " {} as " + articol + "join key" + plural, Expressions.names(optionalsNew));
             }
-            return visitList(this, keys, Attribute.class);
+            return keys;
         } catch (ClassCastException ex) {
             Source source = source(ctx);
             throw new ParsingException(source, "Unsupported join key ", source.text());
@@ -235,7 +239,7 @@ public class ExpressionBuilder extends IdentifierBuilder {
     public UnresolvedAttribute visitDereference(DereferenceContext ctx) {
         String name = visitQualifiedName(ctx.qualifiedName());
         UnresolvedAttribute attr = new UnresolvedAttribute(source(ctx), name);
-        if ("?".equals(ctx.getStart().getText())) {
+        if (ctx.qualifiedName().OPTIONAL() != null) {
             optionals.add(attr);
         }
         return attr;
