@@ -35,18 +35,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static java.util.Collections.emptySet;
 import static org.elasticsearch.xpack.eql.EqlTestUtils.TEST_CFG;
 
 public class AnalyzerTests extends ESTestCase {
 
     private static final String INDEX_NAME = "test";
-    private static Set<UnresolvedAttribute> optionals = new HashSet<>();
+    private static Set<UnresolvedAttribute> allOptionals = new HashSet<>();
     static {
-        optionals.add(new UnresolvedAttribute(Source.EMPTY, "foo"));
-        optionals.add(new UnresolvedAttribute(Source.EMPTY, "bar"));
-        optionals.add(new UnresolvedAttribute(Source.EMPTY, "pid")); // this one also exists in the index mapping
+        allOptionals.add(new UnresolvedAttribute(Source.EMPTY, "foo"));
+        allOptionals.add(new UnresolvedAttribute(Source.EMPTY, "bar"));
+        allOptionals.add(new UnresolvedAttribute(Source.EMPTY, "pid")); // this one also exists in the index mapping
     }
-    private EqlParser parser = new EqlParser(optionals);
+    private EqlParser parser = new EqlParser(allOptionals, emptySet());
     private IndexResolution index = loadIndexResolution("mapping-default.json");
 
     private static Map<String, EsField> loadEqlMapping(String name) {
@@ -59,7 +60,7 @@ public class AnalyzerTests extends ESTestCase {
 
     private LogicalPlan accept(IndexResolution resolution, String eql) {
         PreAnalyzer preAnalyzer = new PreAnalyzer();
-        Analyzer analyzer = new Analyzer(TEST_CFG, new EqlFunctionRegistry(), new Verifier(new Metrics()), optionals);
+        Analyzer analyzer = new Analyzer(TEST_CFG, new EqlFunctionRegistry(), new Verifier(new Metrics()), allOptionals, emptySet());
         return analyzer.analyze(preAnalyzer.preAnalyze(parser.createStatement(eql), resolution));
     }
 

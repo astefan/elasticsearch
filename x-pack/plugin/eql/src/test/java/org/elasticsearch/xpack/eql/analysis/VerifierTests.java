@@ -39,7 +39,7 @@ public class VerifierTests extends ESTestCase {
 
     private static final String INDEX_NAME = "test";
 
-    private final EqlParser parser = new EqlParser(new HashSet<>());
+    private final EqlParser parser = new EqlParser(new HashSet<>(), new HashSet<>());
 
     private final IndexResolution index = loadIndexResolution("mapping-default.json");
 
@@ -52,12 +52,12 @@ public class VerifierTests extends ESTestCase {
     }
 
     private LogicalPlan accept(IndexResolution resolution, String eql) {
-        Set<UnresolvedAttribute> optionals = new HashSet<>();
-        optionals.add(new UnresolvedAttribute(Source.EMPTY, "foo"));
-        optionals.add(new UnresolvedAttribute(Source.EMPTY, "bar"));
+        Set<UnresolvedAttribute> allOptionals = new HashSet<>();
+        allOptionals.add(new UnresolvedAttribute(Source.EMPTY, "foo"));
+        allOptionals.add(new UnresolvedAttribute(Source.EMPTY, "bar"));
         
         PreAnalyzer preAnalyzer = new PreAnalyzer();
-        Analyzer analyzer = new Analyzer(EqlTestUtils.TEST_CFG, new EqlFunctionRegistry(), new Verifier(new Metrics()), optionals);
+        Analyzer analyzer = new Analyzer(EqlTestUtils.TEST_CFG, new EqlFunctionRegistry(), new Verifier(new Metrics()), allOptionals);
         return analyzer.analyze(preAnalyzer.preAnalyze(parser.createStatement(eql), resolution));
     }
 
@@ -150,32 +150,6 @@ public class VerifierTests extends ESTestCase {
 
     // Test unsupported optional fields as join keys
     public void testOptionalFieldsUnsupported() {
-        assertEquals("1:14: Cannot use unsupported optional field [x] as a join key",
-                errorParsing("sequence by ?x, y, pid [any where true] by a [any where true] by b"));
-        assertEquals("1:17: Cannot use unsupported optional fields [y, pid] as join keys",
-                errorParsing("sequence by x, ?y, ?pid [any where true] by a [any where true] by b"));
-        assertEquals("1:44: Cannot use unsupported optional field [a] as a join key",
-                errorParsing("sequence by x, y, pid [any where true] by ?a [any where true] by b"));
-        assertEquals("1:72: Cannot use unsupported optional field [b] as a join key",
-                errorParsing("sequence by x, y, pid [any where true] by a, c [any where true] by d, ?b"));
-        assertEquals("1:72: Cannot use unsupported optional fields [a, c] as join keys",
-                errorParsing("sequence by x, y, pid [any where ?x == true] by ?a, ?c [any where true] by d, ?b"));
-        assertEquals("1:72: Cannot use unsupported optional fields [x, y] as join keys",
-                errorParsing("sequence by ?x, y, ?pid [any where concat(?x,?y) == \"a\"] by a, c [any where true] by d, ?b"));
-        assertEquals("1:72: Cannot use unsupported optional field [b] as a join key",
-                errorParsing("sequence by x, y, pid [any where concat(?x,?y) == \"a\"] by a, c [any where true] by d, ?b"));
-        assertEquals("1:72: Cannot use unsupported optional field [b, c] as join keys",
-                errorParsing("sequence by `?x`, y, `?pid` [any where true] by `?a`, c [any where true] by `?d`, ?b, ?c"));
-        assertEquals("1:72: Cannot use unsupported optional field [?b] as a join key",
-                errorParsing("sequence by x, y, pid [any where true] by `?a`, c [any where true] by d, ?`?b`"));
-        assertEquals("1:72: Cannot use unsupported optional field [?x] as a join key",
-                errorParsing("sequence by ?`?x`, y, pid [any where ?v == true] by `?a`, c [any where true] by d, ?`?b`"));
-        assertEquals("1:72: Cannot use unsupported optional field [x?y] as a join key",
-                errorParsing("sequence by ?`x?y`, y, pid [any where true] by `?a`, c [any where true] by d, ?`?b`"));
-        assertEquals("1:72: Cannot use unsupported optional field [?a] as a join key",
-                errorParsing("sequence by `x?y`, y, pid [any where true] by ?`?a`, c [any where true] by d, ?`?b`"));
-        assertEquals("1:72: Cannot use unsupported optional field [a?b] as a join key",
-                errorParsing("sequence by `x?y`, y, pid [any where true] by `?a`, c [any where true] by d, ?`a?b`"));
         assertEquals("1:1: extraneous input '?' expecting {'any', 'join', 'sequence', STRING, IDENTIFIER}",
                 errorParsing("?x where true"));
     }
@@ -219,6 +193,10 @@ public class VerifierTests extends ESTestCase {
         // optional fields
         accept("file where ?foo == 123");
         accept("file where ?foo == null");
+        accept("file where `?foo` == null");
+        accept("file where ?`?foo` == null");
+        accept("file where ?`f?oo` == null");
+        accept("file where `fo?o` == null");
         accept("file where serial_event_id == 82 and (true == (?bar in (\"abc\", \"xyz\")))");
         accept("file where concat(?foo, \"test\", ?bar) == \"onetest!\"");
     }
@@ -453,3 +431,4 @@ public class VerifierTests extends ESTestCase {
             + "cluster's [" + Version.CURRENT + "]: [one, two]"));
     }
 }
+

@@ -40,10 +40,12 @@ public class EqlParser {
     private static final Logger log = LogManager.getLogger();
 
     private final boolean DEBUG = false;
-    private final Set<UnresolvedAttribute> optionals;
+    private final Set<UnresolvedAttribute> allOptionals;
+    private final Set<Expression> keyOptionals;
 
-    public EqlParser(Set<UnresolvedAttribute> optionals) {
-        this.optionals = optionals;
+    public EqlParser(Set<UnresolvedAttribute> allOptionals, Set<Expression> keyOptionals) {
+        this.allOptionals = allOptionals;
+        this.keyOptionals = keyOptionals;
     }
     /**
      * Parses an EQL statement into execution plan
@@ -109,7 +111,7 @@ public class EqlParser {
                 log.info("Parse tree {} " + tree.toStringTree());
             }
 
-            return visitor.apply(new AstBuilder(params, optionals), tree);
+            return visitor.apply(new AstBuilder(params, allOptionals, keyOptionals), tree);
         } catch (StackOverflowError e) {
             throw new ParsingException("EQL statement is too large, " +
                 "causing stack overflow when generating the parsing tree: [{}]", eql);

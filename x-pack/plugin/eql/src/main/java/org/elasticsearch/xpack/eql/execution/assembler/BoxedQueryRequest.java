@@ -14,6 +14,7 @@ import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.xpack.eql.execution.search.Ordinal;
 import org.elasticsearch.xpack.eql.execution.search.QueryRequest;
 import org.elasticsearch.xpack.eql.execution.search.RuntimeUtils;
+import org.elasticsearch.xpack.ql.expression.Expression;
 import org.elasticsearch.xpack.ql.util.CollectionUtils;
 
 import java.util.ArrayList;
@@ -52,12 +53,22 @@ public class BoxedQueryRequest implements QueryRequest {
     private Ordinal from, to;
     private Ordinal after;
 
-    public BoxedQueryRequest(QueryRequest original, String timestamp, List<String> keyNames) {
+    public BoxedQueryRequest(QueryRequest original, String timestamp, List<String> keyNames, Set<String> keyOptionals) {
         searchSource = original.searchSource();
         // setup range queries and preserve their reference to simplify the update
         timestampRange = rangeQuery(timestamp).timeZone("UTC").format("epoch_millis");
         keys = keyNames;
         RuntimeUtils.addFilter(timestampRange, searchSource);
+        // do not join on null values
+        if (keyNames.isEmpty() == false) {
+            for (String keyName : keyNames) {
+                // add an "exists" query for each non-optional join key to filter out any non-existent values
+                // an optional field join key it is supposed to accept nulls, so we skip them
+                if (keyOptionals.contains(keyName) == false) {
+                    RuntimeUtils.addFilter(existsQuery(keyName), searchSource);
+                }
+            }
+        }
     }
 
     @Override

@@ -10,6 +10,7 @@ package org.elasticsearch.xpack.eql.parser;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
+import org.elasticsearch.xpack.eql.expression.OptionalUnresolvedAttribute;
 import org.elasticsearch.xpack.eql.expression.function.EqlFunctionResolution;
 import org.elasticsearch.xpack.eql.expression.function.scalar.string.Match;
 import org.elasticsearch.xpack.eql.expression.predicate.operator.comparison.InsensitiveEquals;
@@ -25,7 +26,6 @@ import org.elasticsearch.xpack.eql.parser.EqlBaseParser.PredicateContext;
 import org.elasticsearch.xpack.ql.QlIllegalArgumentException;
 import org.elasticsearch.xpack.ql.expression.Attribute;
 import org.elasticsearch.xpack.ql.expression.Expression;
-import org.elasticsearch.xpack.ql.expression.Expressions;
 import org.elasticsearch.xpack.ql.expression.Literal;
 import org.elasticsearch.xpack.ql.expression.UnresolvedAttribute;
 import org.elasticsearch.xpack.ql.expression.function.Function;
@@ -69,11 +69,13 @@ import static org.elasticsearch.xpack.ql.parser.ParserUtils.visitList;
 public class ExpressionBuilder extends IdentifierBuilder {
 
     protected final ParserParams params;
-    private final Set<UnresolvedAttribute> optionals;
+    private final Set<UnresolvedAttribute> allOptionals;
+    private final Set<Expression> keyOptionals;
 
-    public ExpressionBuilder(ParserParams params, Set<UnresolvedAttribute> optionals) {
+    public ExpressionBuilder(ParserParams params, Set<UnresolvedAttribute> allOptionals, Set<Expression> keyOptionals) {
         this.params = params;
-        this.optionals = optionals;
+        this.allOptionals = allOptionals;
+        this.keyOptionals = keyOptionals;
     }
 
     protected Expression expression(ParseTree ctx) {
@@ -95,16 +97,11 @@ public class ExpressionBuilder extends IdentifierBuilder {
             return emptyList();
         }
         try {
-            Set<UnresolvedAttribute> optionalsOld = new LinkedHashSet<>(optionals);
+            Set<UnresolvedAttribute> optionalsOld = new LinkedHashSet<>(allOptionals);
             List<Attribute> keys = visitList(this, ctx.expression(), Attribute.class);
-            Set<UnresolvedAttribute> optionalsNew = new LinkedHashSet<>(optionals);
+            Set<UnresolvedAttribute> optionalsNew = new LinkedHashSet<>(allOptionals);
             optionalsNew.removeAll(optionalsOld);
-            if (optionalsNew.isEmpty() == false) {
-                String plural = optionalsNew.size() > 1 ? "s" : StringUtils.EMPTY;
-                String articol = optionalsNew.size() > 1 ? "" : "a ";
-                throw new ParsingException(optionalsNew.iterator().next().source(), "Cannot use unsupported optional field" + plural 
-                                           + " {} as " + articol + "join key" + plural, Expressions.names(optionalsNew));
-            }
+            keyOptionals.addAll(optionalsNew);
             return keys;
         } catch (ClassCastException ex) {
             Source source = source(ctx);
@@ -238,9 +235,12 @@ public class ExpressionBuilder extends IdentifierBuilder {
     @Override
     public UnresolvedAttribute visitDereference(DereferenceContext ctx) {
         String name = visitQualifiedName(ctx.qualifiedName());
-        UnresolvedAttribute attr = new UnresolvedAttribute(source(ctx), name);
+        UnresolvedAttribute attr;
         if (ctx.qualifiedName().OPTIONAL() != null) {
-            optionals.add(attr);
+            attr = new OptionalUnresolvedAttribute(source(ctx), name);
+            allOptionals.add(attr);
+        } else {
+            attr = new UnresolvedAttribute(source(ctx), name);
         }
         return attr;
     }

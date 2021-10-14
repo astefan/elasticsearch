@@ -7,6 +7,7 @@
 
 package org.elasticsearch.xpack.eql.analysis;
 
+import org.elasticsearch.xpack.eql.expression.OptionalUnresolvedAttribute;
 import org.elasticsearch.xpack.ql.analyzer.AnalyzerRules.AddMissingEqualsToBoolField;
 import org.elasticsearch.xpack.ql.common.Failure;
 import org.elasticsearch.xpack.ql.expression.Attribute;
@@ -34,13 +35,16 @@ public class Analyzer extends RuleExecutor<LogicalPlan> {
     private final Configuration configuration;
     private final FunctionRegistry functionRegistry;
     private final Verifier verifier;
-    private final Set<UnresolvedAttribute> optionals;
+    private final Set<UnresolvedAttribute> allOptionals;
+    private final Set<Expression> keyOptionals;
 
-    public Analyzer(Configuration configuration, FunctionRegistry functionRegistry, Verifier verifier, Set<UnresolvedAttribute> optionals) {
+    public Analyzer(Configuration configuration, FunctionRegistry functionRegistry, Verifier verifier,
+                    Set<UnresolvedAttribute> allOptionals, Set<Expression> keyOptionals) {
         this.configuration = configuration;
         this.functionRegistry = functionRegistry;
         this.verifier = verifier;
-        this.optionals = optionals;
+        this.allOptionals = allOptionals;
+        this.keyOptionals = keyOptionals;
     }
 
     @Override
@@ -60,7 +64,7 @@ public class Analyzer extends RuleExecutor<LogicalPlan> {
     }
 
     private LogicalPlan verify(LogicalPlan plan) {
-        Collection<Failure> failures = verifier.verify(plan, configuration.versionIncompatibleClusters());
+        Collection<Failure> failures = verifier.verify(plan, configuration.versionIncompatibleClusters(), keyOptionals);
         if (failures.isEmpty() == false) {
             throw new VerificationException(failures);
         }
@@ -87,9 +91,20 @@ public class Analyzer extends RuleExecutor<LogicalPlan> {
                     childrenOutput.addAll(child.output());
                 }
                 Expression named = resolveAgainstList(u, childrenOutput);
-                // if it's not resolved (it doesn't exist in mappings) and it's an optional field, replace it with "null"
-                if (named == null && optionals.contains(u)) {
+                // if the attribute is resolved and it was an optional field, update the list of optionals with its resolved variant
+                if (named != null && keyOptionals.contains(u)) {
+                    keyOptionals.remove(u);
+                    keyOptionals.add(named);
+                }
+                // if it's not resolved (it doesn't exist in mappings) and it's an optional field, replace it with "null" in queries only
+                if (named == null && allOptionals.contains(u) && keyOptionals.contains(u) == false) {
                     named = new Literal(u.source(), null, DataTypes.NULL);
+                }
+                if (named == null && keyOptionals.contains(u) && u instanceof OptionalUnresolvedAttribute) {
+                    if (log.isTraceEnabled()) {
+                        log.trace("Resolved optional field {}", u);
+                    }
+                    ((OptionalUnresolvedAttribute) u).markAsResolved();
                 }
                 // if resolved, return it; otherwise keep it in place to be resolved later
                 if (named != null) {
