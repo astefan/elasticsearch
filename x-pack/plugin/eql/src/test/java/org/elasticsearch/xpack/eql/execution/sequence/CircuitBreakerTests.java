@@ -27,7 +27,7 @@ import org.elasticsearch.search.SearchSortValues;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.test.ESTestCase;
 import org.elasticsearch.xpack.eql.execution.assembler.BoxedQueryRequest;
-import org.elasticsearch.xpack.eql.execution.assembler.Criterion;
+import org.elasticsearch.xpack.eql.execution.assembler.SequenceCriterion;
 import org.elasticsearch.xpack.eql.execution.search.HitReference;
 import org.elasticsearch.xpack.eql.execution.search.Ordinal;
 import org.elasticsearch.xpack.eql.execution.search.QueryClient;
@@ -85,12 +85,12 @@ public class CircuitBreakerTests extends ESTestCase {
 
     public void testCircuitBreakerTumblingWindow() {
         QueryClient client = new TestQueryClient();
-        List<Criterion<BoxedQueryRequest>> criteria = new ArrayList<>(stages);
+        List<SequenceCriterion<BoxedQueryRequest>> criteria = new ArrayList<>(stages);
 
         for (int i = 0; i < stages; i++) {
             final int j = i;
             criteria.add(
-                new Criterion<>(
+                new SequenceCriterion<>(
                     i,
                     new BoxedQueryRequest(
                         () -> SearchSourceBuilder.searchSource().size(10).query(matchAllQuery()).terminateAfter(j),

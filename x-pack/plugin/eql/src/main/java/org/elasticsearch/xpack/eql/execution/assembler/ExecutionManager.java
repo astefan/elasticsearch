@@ -10,10 +10,13 @@ package org.elasticsearch.xpack.eql.execution.assembler;
 import org.elasticsearch.core.TimeValue;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.xpack.eql.EqlIllegalArgumentException;
+import org.elasticsearch.xpack.eql.execution.sampling.SamplingIterator;
+import org.elasticsearch.xpack.eql.execution.search.BasicQueryClient;
 import org.elasticsearch.xpack.eql.execution.search.Limit;
 import org.elasticsearch.xpack.eql.execution.search.PITAwareQueryClient;
 import org.elasticsearch.xpack.eql.execution.search.QueryRequest;
 import org.elasticsearch.xpack.eql.execution.search.RuntimeUtils;
+import org.elasticsearch.xpack.eql.execution.search.extractor.CompositeKeyExtractor;
 import org.elasticsearch.xpack.eql.execution.search.extractor.FieldHitExtractor;
 import org.elasticsearch.xpack.eql.execution.search.extractor.ImplicitTiebreakerHitExtractor;
 import org.elasticsearch.xpack.eql.execution.search.extractor.TimestampFieldHitExtractor;
@@ -26,6 +29,7 @@ import org.elasticsearch.xpack.eql.querydsl.container.FieldExtractorRegistry;
 import org.elasticsearch.xpack.eql.session.EqlConfiguration;
 import org.elasticsearch.xpack.eql.session.EqlSession;
 import org.elasticsearch.xpack.ql.execution.search.extractor.AbstractFieldHitExtractor;
+import org.elasticsearch.xpack.ql.execution.search.extractor.BucketExtractor;
 import org.elasticsearch.xpack.ql.execution.search.extractor.ComputingExtractor;
 import org.elasticsearch.xpack.ql.execution.search.extractor.HitExtractor;
 import org.elasticsearch.xpack.ql.expression.Attribute;
@@ -73,7 +77,7 @@ public class ExecutionManager {
         String timestampName = Expressions.name(timestamp);
 
         // secondary criteria
-        List<Criterion<BoxedQueryRequest>> criteria = new ArrayList<>(plans.size() - 1);
+        List<SequenceCriterion<BoxedQueryRequest>> criteria = new ArrayList<>(plans.size() - 1);
 
         // build a criterion for each query
         for (int i = 0; i < plans.size(); i++) {
@@ -114,7 +118,7 @@ public class ExecutionManager {
                 SearchSourceBuilder source = esQueryExec.source(session, false);
                 QueryRequest original = () -> source;
                 BoxedQueryRequest boxedRequest = new BoxedQueryRequest(original, timestampName, keyFields, optionalKeys);
-                Criterion<BoxedQueryRequest> criterion = new Criterion<>(
+                SequenceCriterion<BoxedQueryRequest> criterion = new SequenceCriterion<>(
                     i,
                     boxedRequest,
                     keyExtractors,
@@ -147,6 +151,60 @@ public class ExecutionManager {
         return w;
     }
 
+    public Executable assemble(List<List<Attribute>> listOfKeys, List<PhysicalPlan> plans) {
+        FieldExtractorRegistry extractorRegistry = new FieldExtractorRegistry();
+
+        // secondary criteria
+        List<SamplingCriterion<AggregatedQueryRequest>> criteria = new ArrayList<>(plans.size() - 1);
+
+        // build a criterion for each query
+        for (int i = 0; i < plans.size(); i++) {
+            List<Attribute> keys = listOfKeys.get(i);
+            List<BucketExtractor> keyExtractors = compositeKeyExtractors(keys, extractorRegistry);
+            List<String> keyFields = new ArrayList<>(keyExtractors.size());
+
+            // extract top-level fields used as keys to optimize query lookups
+            // this process gets skipped for nested fields
+            for (int j = 0; j < keyExtractors.size(); j++) {
+                BucketExtractor extractor = keyExtractors.get(j);
+                if (extractor instanceof CompositeKeyExtractor e) {
+                    keyFields.add(e.key());
+                }
+            }
+
+            PhysicalPlan query = plans.get(i);
+            // search query
+            if (query instanceof EsQueryExec esQueryExec) {
+                SearchSourceBuilder source = esQueryExec.source(session, false);
+                QueryRequest original = () -> source;
+                AggregatedQueryRequest r = new AggregatedQueryRequest(original, keyFields);
+                SamplingCriterion<AggregatedQueryRequest> criterion = new SamplingCriterion<AggregatedQueryRequest>(i, r, keyExtractors);
+                criteria.add(criterion);
+            } else {
+                // until
+                if (i != plans.size() - 1) {
+                    throw new EqlIllegalArgumentException("Expected a query but got [{}]", query.getClass());
+                } else {
+                    criteria.add(null);
+                }
+            }
+        }
+
+        /*int completionStage = criteria.size() - 1;
+        SequenceMatcher matcher = new SequenceMatcher(completionStage, descending, maxSpan, limit, session.circuitBreaker());
+        
+        TumblingWindow w = new TumblingWindow(
+            new PITAwareQueryClient(session),
+            criteria.subList(0, completionStage),
+            criteria.get(completionStage),
+            matcher
+        );
+        
+        return w;*/
+        return new SamplingIterator(new BasicQueryClient(session), criteria);
+        //return null;
+    }
+
     private HitExtractor timestampExtractor(HitExtractor hitExtractor) {
         if (hitExtractor instanceof FieldHitExtractor fe) {
             return (fe instanceof TimestampFieldHitExtractor) ? hitExtractor : new TimestampFieldHitExtractor(fe);
@@ -162,6 +220,14 @@ public class ExecutionManager {
         List<HitExtractor> extractors = new ArrayList<>(exps.size());
         for (Expression exp : exps) {
             extractors.add(hitExtractor(exp, registry));
+        }
+        return extractors;
+    }
+
+    private List<BucketExtractor> compositeKeyExtractors(List<? extends Expression> exps, FieldExtractorRegistry registry) {
+        List<BucketExtractor> extractors = new ArrayList<>(exps.size());
+        for (Expression exp : exps) {
+            extractors.add(RuntimeUtils.createBucketExtractor(registry.compositeKeyExtraction(exp), cfg));
         }
         return extractors;
     }
