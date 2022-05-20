@@ -53,12 +53,14 @@ public class SampleQueryRequest implements QueryRequest {
     private List<QueryBuilder> multipleKeyFilters;
     private List<QueryBuilder> singleKeyPairFilters;
     private final int fetchSize;
+    private final boolean ascending;
 
-    public SampleQueryRequest(QueryRequest original, List<String> keyNames, List<Attribute> keyFields, int fetchSize) {
+    public SampleQueryRequest(QueryRequest original, List<String> keyNames, List<Attribute> keyFields, int fetchSize, boolean ascending) {
         this.searchSource = original.searchSource();
         this.keys = keyNames;
         this.keyFields = keyFields;
         this.fetchSize = fetchSize;
+        this.ascending = ascending;
     }
 
     @Override
@@ -188,7 +190,7 @@ public class SampleQueryRequest implements QueryRequest {
             String key = keys.get(i);
             Attribute field = keyFields.get(i);
             boolean isOptionalKey = isOptionalAttribute(field);
-            compositeAggSources.add(new TermsValuesSourceBuilder(key).field(key).missingBucket(isOptionalKey));
+            compositeAggSources.add(new TermsValuesSourceBuilder(key).field(key).missingBucket(isOptionalKey).order(ascending ? "asc" : "desc"));
         }
         agg = new CompositeAggregationBuilder(COMPOSITE_AGG_NAME, compositeAggSources);
         agg.size(fetchSize);

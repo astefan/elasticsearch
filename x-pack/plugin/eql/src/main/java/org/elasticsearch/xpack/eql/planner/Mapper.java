@@ -11,6 +11,7 @@ import org.elasticsearch.xpack.eql.execution.search.Limit;
 import org.elasticsearch.xpack.eql.plan.logical.AbstractJoin;
 import org.elasticsearch.xpack.eql.plan.logical.KeyedFilter;
 import org.elasticsearch.xpack.eql.plan.logical.LimitWithOffset;
+import org.elasticsearch.xpack.eql.plan.logical.Sample;
 import org.elasticsearch.xpack.eql.plan.logical.Sequence;
 import org.elasticsearch.xpack.eql.plan.physical.EsQueryExec;
 import org.elasticsearch.xpack.eql.plan.physical.FilterExec;
@@ -85,7 +86,7 @@ class Mapper extends RuleExecutor<PhysicalPlan> {
                         sequence.maxSpan()
                     );
                 }
-                return new SampleExec(p.source(), matches, keys);
+                return new SampleExec(p.source(), matches, keys, null, ((Sample) p).direction());
             }
 
             if (p instanceof LocalRelation) {

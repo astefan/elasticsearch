@@ -14,6 +14,7 @@ import org.elasticsearch.xpack.eql.plan.physical.LimitWithOffsetExec;
 import org.elasticsearch.xpack.eql.plan.physical.OrderExec;
 import org.elasticsearch.xpack.eql.plan.physical.PhysicalPlan;
 import org.elasticsearch.xpack.eql.plan.physical.ProjectExec;
+import org.elasticsearch.xpack.eql.plan.physical.SampleExec;
 import org.elasticsearch.xpack.eql.plan.physical.SequenceExec;
 import org.elasticsearch.xpack.eql.plan.physical.UnaryExec;
 import org.elasticsearch.xpack.eql.querydsl.container.QueryContainer;
@@ -107,8 +108,9 @@ class QueryFolder extends RuleExecutor<PhysicalPlan> {
             PhysicalPlan child = limit.child();
             if (child instanceof EsQueryExec query) {
                 plan = query.with(query.queryContainer().with(limit.limit()));
-            }
-            if (child instanceof SequenceExec exec) {
+            } else if (child instanceof SequenceExec exec) {
+                plan = exec.with(limit.limit());
+            } else if (child instanceof SampleExec exec) {
                 plan = exec.with(limit.limit());
             }
             return plan;

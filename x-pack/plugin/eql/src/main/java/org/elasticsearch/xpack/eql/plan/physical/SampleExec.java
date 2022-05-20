@@ -9,11 +9,13 @@ package org.elasticsearch.xpack.eql.plan.physical;
 
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.xpack.eql.execution.assembler.ExecutionManager;
+import org.elasticsearch.xpack.eql.execution.search.Limit;
 import org.elasticsearch.xpack.eql.session.EqlSession;
 import org.elasticsearch.xpack.eql.session.Payload;
 import org.elasticsearch.xpack.ql.expression.Attribute;
 import org.elasticsearch.xpack.ql.expression.Expressions;
 import org.elasticsearch.xpack.ql.expression.NamedExpression;
+import org.elasticsearch.xpack.ql.expression.Order.OrderDirection;
 import org.elasticsearch.xpack.ql.tree.NodeInfo;
 import org.elasticsearch.xpack.ql.tree.Source;
 
@@ -24,20 +26,24 @@ import java.util.Objects;
 public class SampleExec extends PhysicalPlan {
 
     private final List<List<Attribute>> keys;
+    private final Limit limit;
+    private final OrderDirection direction;
 
-    public SampleExec(Source source, List<PhysicalPlan> children, List<List<Attribute>> keys) {
+    public SampleExec(Source source, List<PhysicalPlan> children, List<List<Attribute>> keys, Limit limit, OrderDirection direction) {
         super(source, children);
         this.keys = keys;
+        this.limit = limit;
+        this.direction = direction;
     }
 
     @Override
     protected NodeInfo<SampleExec> info() {
-        return NodeInfo.create(this, SampleExec::new, children(), keys);
+        return NodeInfo.create(this, SampleExec::new, children(), keys, limit, direction);
     }
 
     @Override
     public PhysicalPlan replaceChildren(List<PhysicalPlan> newChildren) {
-        return new SampleExec(source(), newChildren, keys);
+        return new SampleExec(source(), newChildren, keys, limit, direction);
     }
 
     @Override
@@ -53,14 +59,26 @@ public class SampleExec extends PhysicalPlan {
         return keys;
     }
 
+    public Limit limit() {
+        return limit;
+    }
+
+    public OrderDirection direction() {
+        return direction;
+    }
+
+    public SampleExec with(Limit limit) {
+        return new SampleExec(source(), children(), keys(), limit, direction());
+    }
+
     @Override
     public void execute(EqlSession session, ActionListener<Payload> listener) {
-        new ExecutionManager(session).assemble(keys(), children()).execute(listener);
+        new ExecutionManager(session).assemble(keys(), children(), limit(), direction()).execute(listener);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(keys, children());
+        return Objects.hash(keys, limit, direction, children());
     }
 
     @Override
@@ -74,6 +92,6 @@ public class SampleExec extends PhysicalPlan {
         }
 
         SampleExec other = (SampleExec) obj;
-        return Objects.equals(children(), other.children()) && Objects.equals(keys, other.keys);
+        return Objects.equals(children(), other.children()) && Objects.equals(keys, other.keys) && Objects.equals(limit, other.limit) && Objects.equals(direction, other.direction);
     }
 }

@@ -9,6 +9,7 @@ package org.elasticsearch.xpack.eql.plan.logical;
 
 import org.elasticsearch.xpack.ql.capabilities.Resolvables;
 import org.elasticsearch.xpack.ql.expression.Attribute;
+import org.elasticsearch.xpack.ql.expression.Order.OrderDirection;
 import org.elasticsearch.xpack.ql.plan.logical.LogicalPlan;
 import org.elasticsearch.xpack.ql.tree.Source;
 import org.elasticsearch.xpack.ql.util.Check;
@@ -21,10 +22,12 @@ import java.util.Objects;
 public abstract class AbstractJoin extends LogicalPlan {
 
     protected final List<KeyedFilter> queries;
+    protected final OrderDirection direction;
 
-    public AbstractJoin(Source source, List<KeyedFilter> queries, KeyedFilter... query) {
+    public AbstractJoin(Source source, OrderDirection direction, List<KeyedFilter> queries, KeyedFilter... query) {
         super(source, CollectionUtils.combine(queries, query));
         this.queries = queries;
+        this.direction = direction;
     }
 
     static List<KeyedFilter> asKeyed(List<LogicalPlan> list) {
@@ -61,9 +64,13 @@ public abstract class AbstractJoin extends LogicalPlan {
         return queries;
     }
 
+    public OrderDirection direction() {
+        return direction;
+    }
+
     @Override
     public int hashCode() {
-        return Objects.hash(queries);
+        return Objects.hash(direction, queries);
     }
 
     @Override
@@ -76,7 +83,7 @@ public abstract class AbstractJoin extends LogicalPlan {
         }
 
         AbstractJoin other = (AbstractJoin) obj;
-        return Objects.equals(queries, other.queries);
+        return Objects.equals(direction, other.direction) && Objects.equals(queries, other.queries);
     }
 
 }

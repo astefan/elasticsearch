@@ -158,7 +158,7 @@ public class ExecutionManager {
     /*
      * Sample assembler
      */
-    public Executable assemble(List<List<Attribute>> listOfKeys, List<PhysicalPlan> plans) {
+    public Executable assemble(List<List<Attribute>> listOfKeys, List<PhysicalPlan> plans, Limit limit, OrderDirection direction) {
         if (cfg.fetchSize() > SAMPLE_MAX_PAGE_SIZE) {
             throw new EqlIllegalArgumentException("Fetch size cannot be greater than [{}]", SAMPLE_MAX_PAGE_SIZE);
         }
@@ -182,25 +182,29 @@ public class ExecutionManager {
             }
 
             PhysicalPlan query = plans.get(i);
+            boolean ascending = direction == OrderDirection.ASC;
             // search query
             if (query instanceof EsQueryExec esQueryExec) {
                 SampleQueryRequest firstQuery = new SampleQueryRequest(
                     () -> wrapAsFilter(esQueryExec.source(session, false)),
                     keyFields,
                     keys,
-                    cfg.fetchSize()
+                    cfg.fetchSize(),
+                    ascending
                 );
                 SampleQueryRequest midQuery = new SampleQueryRequest(
                     () -> wrapAsFilter(esQueryExec.source(session, false)),
                     keyFields,
                     keys,
-                    cfg.fetchSize()
+                    cfg.fetchSize(),
+                    ascending
                 );
                 SampleQueryRequest finalQuery = new SampleQueryRequest(
                     () -> wrapAsFilter(esQueryExec.source(session, false)),
                     keyFields,
                     keys,
-                    cfg.fetchSize()
+                    cfg.fetchSize(),
+                    ascending
                 );
                 firstQuery.withCompositeAggregation();
                 midQuery.withCompositeAggregation();
@@ -211,7 +215,7 @@ public class ExecutionManager {
             }
         }
 
-        return new SampleIterator(new PITAwareQueryClient(session), criteria, cfg.fetchSize());
+        return new SampleIterator(new PITAwareQueryClient(session), criteria, cfg.fetchSize(), limit.limit());
     }
 
     private HitExtractor timestampExtractor(HitExtractor hitExtractor) {

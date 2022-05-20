@@ -51,14 +51,16 @@ public class SampleIterator implements Executable {
     private final int maxCriteria;
     private final List<Sample> samples;
     private final int fetchSize;
+    private final int limit;
 
     private long startTime;
 
-    public SampleIterator(QueryClient client, List<SampleCriterion> criteria, int fetchSize) {
+    public SampleIterator(QueryClient client, List<SampleCriterion> criteria, int fetchSize, int limit) {
         this.client = client;
         this.criteria = criteria;
         this.maxCriteria = criteria.size();
         this.fetchSize = fetchSize;
+        this.limit = Math.abs(limit);
         this.samples = new ArrayList<>();
     }
 
@@ -163,9 +165,11 @@ public class SampleIterator implements Executable {
             List<List<SearchHit>> finalSamples = new ArrayList<>();
             List<List<SearchHit>> sample = new ArrayList<>(maxCriteria);
             MultiSearchResponse.Item[] response = r.getResponses();
+            int responseIndex = 0;
             int docGroupsCounter = 1;
+            boolean limitReached = false;
 
-            for (int responseIndex = 0; responseIndex < response.length; responseIndex++) {
+            while (limitReached == false && responseIndex < response.length) {
                 MultiSearchResponse.Item item = response[responseIndex];
                 final var hits = RuntimeUtils.searchHits(item.getResponse());
                 if (hits.size() > 0) {
@@ -176,20 +180,29 @@ public class SampleIterator implements Executable {
                     if (match != null) {
                         finalSamples.add(match);
                         samples.add(new Sample(sampleKeys.get(responseIndex / maxCriteria), match));
+                        if (samples.size() == limit) {
+                            limitReached = true;
+                        }
                     }
                     docGroupsCounter = 1;
                     sample = new ArrayList<>(maxCriteria);
                 } else {
                     docGroupsCounter++;
                 }
+                responseIndex++;
             }
 
             log.trace("Final step... found [{}] new Samples", samples.size() - initialSize);
-            // if this final page is max_page_size in size it means: either it's the last page and it happens to have max_page_size elements
-            // or it's just not the last page and we should advance
-            var next = page.size() == fetchSize ? page : stack.pop();
-            log.trace("Final step... getting next page of the " + (next == page ? "current" : "previous") + " page");
-            nextPage(listener, next);
+
+            if (limitReached) {
+                payload(listener);
+            } else {
+                // if this final page is max_page_size in size it means: either it's the last page and it happens to have max_page_size elements
+                // or it's just not the last page and we should advance
+                var next = page.size() == fetchSize ? page : stack.pop();
+                log.trace("Final step... getting next page of the " + (next == page ? "current" : "previous") + " page");
+                nextPage(listener, next);
+            }
         }, listener::onFailure));
     }
 

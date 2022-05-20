@@ -25,7 +25,6 @@ public class Join extends AbstractJoin {
     private final KeyedFilter until;
     private final Attribute timestamp;
     private final Attribute tiebreaker;
-    private final OrderDirection direction;
 
     public Join(
         Source source,
@@ -35,11 +34,10 @@ public class Join extends AbstractJoin {
         Attribute tiebreaker,
         OrderDirection direction
     ) {
-        super(source, queries, until);
+        super(source, direction, queries, until);
         this.until = until;
         this.timestamp = timestamp;
         this.tiebreaker = tiebreaker;
-        this.direction = direction;
     }
 
     private Join(
@@ -94,25 +92,20 @@ public class Join extends AbstractJoin {
         return tiebreaker;
     }
 
-    public OrderDirection direction() {
-        return direction;
-    }
-
     public Join with(List<KeyedFilter> queries, KeyedFilter until, OrderDirection direction) {
         return new Join(source(), queries, until, timestamp, tiebreaker, direction);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(direction, timestamp, tiebreaker, until, super.hashCode());
+        return Objects.hash(timestamp, tiebreaker, until, super.hashCode());
     }
 
     @Override
     public boolean equals(Object obj) {
         if (super.equals(obj)) {
             Join other = (Join) obj;
-            return Objects.equals(direction, other.direction)
-                && Objects.equals(until, other.until)
+            return Objects.equals(until, other.until)
                 && Objects.equals(timestamp, other.timestamp)
                 && Objects.equals(tiebreaker, other.tiebreaker);
         }

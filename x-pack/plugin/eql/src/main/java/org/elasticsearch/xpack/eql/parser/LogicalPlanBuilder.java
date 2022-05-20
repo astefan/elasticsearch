@@ -96,11 +96,41 @@ public abstract class LogicalPlanBuilder extends ExpressionBuilder {
     @Override
     public Object visitStatement(StatementContext ctx) {
         LogicalPlan plan = plan(ctx.query());
+        // add the default limit only if specified
+        Literal defaultSize = new Literal(synthetic("<default-size>"), params.size(), DataTypes.INTEGER);
+        Source defaultLimitSource = synthetic("<default-limit>");
+        boolean asc = resultPosition() == OrderDirection.ASC;
 
-        if (plan instanceof Sample) {
-            if (ctx.pipe().size() > 0) {
-                throw new ParsingException(source(ctx.pipe().get(0)), "Samples do not support pipes yet");
+        if (plan instanceof Sample sample) {
+            boolean missingLimit = true;
+
+            for (PipeContext pipeCtx : ctx.pipe()) {
+                plan = pipe(pipeCtx, plan);
+                if (plan instanceof LimitWithOffset) {
+                    if (missingLimit == false) {
+                        throw new ParsingException(source(pipeCtx), "Samples support only one of HEAD and TAIL pipes");
+                    }
+
+                    missingLimit = false;
+                    if (plan instanceof Head) {
+                        plan = new Head(defaultLimitSource, defaultSize, plan);
+                    } else {
+                        plan = new Tail(defaultLimitSource, defaultSize, plan);
+                    }
+                } else {
+                    throw new ParsingException(source(pipeCtx), "Samples support HEAD and TAIL pipes only");
+                }
             }
+
+            // add limit based on the default order if no tail/head was specified
+            if (missingLimit) {
+                if (asc) {
+                    plan = new Head(defaultLimitSource, defaultSize, plan);
+                } else {
+                    plan = new Tail(defaultLimitSource, defaultSize, plan);
+                }
+            }
+
             return plan;
         }
         //
@@ -109,7 +139,6 @@ public abstract class LogicalPlanBuilder extends ExpressionBuilder {
 
         // the first pipe will be the implicit order
         // declared here for resolving any possible tie-breakers
-        boolean asc = resultPosition() == OrderDirection.ASC;
         NullsPosition position = asc ? NullsPosition.FIRST : NullsPosition.LAST;
 
         List<Order> orders = new ArrayList<>(2);
@@ -122,11 +151,6 @@ public abstract class LogicalPlanBuilder extends ExpressionBuilder {
         }
 
         plan = new OrderBy(defaultOrderSource, plan, orders);
-
-        // add the default limit only if specified
-        Literal defaultSize = new Literal(synthetic("<default-size>"), params.size(), DataTypes.INTEGER);
-        Source defaultLimitSource = synthetic("<default-limit>");
-
         LogicalPlan previous = plan;
         boolean missingLimit = true;
 
@@ -447,7 +471,7 @@ public abstract class LogicalPlanBuilder extends ExpressionBuilder {
             throw new ParsingException(missingJoinKeysSource, "A sample must have at least one join key, found none");
         }
 
-        return new Sample(source, queries);
+        return new Sample(source, resultPosition(), queries);
     }
 
     private LogicalPlan pipe(PipeContext ctx, LogicalPlan plan) {
