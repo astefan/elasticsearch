@@ -243,7 +243,7 @@ public class TumblingWindow implements Executable {
                             continue;
                         }
                         Timestamp hitTimestamp = criterion.timestamp(hits[0]);
-                        lastLeading = lastLeading == null || lastLeading.instant().compareTo(hitTimestamp.instant()) < 0
+                        lastLeading = lastLeading == null || lastLeading.delta(hitTimestamp) < 0
                             ? hitTimestamp
                             : lastLeading;
                     } else if (trailing(i)) {
@@ -251,7 +251,7 @@ public class TumblingWindow implements Executable {
                             continue;
                         }
                         Timestamp hitTimestamp = criterion.timestamp(hits[0]);
-                        firstTrailing = firstTrailing == null || firstTrailing.instant().compareTo(hitTimestamp.instant()) > 0
+                        firstTrailing = firstTrailing == null || firstTrailing.delta(hitTimestamp) > 0
                             ? hitTimestamp
                             : firstTrailing;
                     } else {
