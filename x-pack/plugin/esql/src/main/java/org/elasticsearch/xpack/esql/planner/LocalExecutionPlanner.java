@@ -380,11 +380,9 @@ public class LocalExecutionPlanner {
                 case "version" -> TopNEncoder.VERSION;
                 case "boolean", "null", "byte", "short", "integer", "long", "double", "float", "half_float", "datetime", "date_period",
                     "time_duration", "object", "nested", "scaled_float", "unsigned_long", "_doc" -> TopNEncoder.DEFAULT_SORTABLE;
-                case "unsupported" -> TopNEncoder.UTF8; // unsupported fields are encoded as BytesRef, we'll use the same encoder
-                default -> {
-                    assert false : "No TopN sorting encoder for type " + inverse.get(channel).type();
-                    throw new EsqlIllegalArgumentException("No TopN sorting encoder for type " + inverse.get(channel).type());
-                }
+                // unsupported fields are encoded as BytesRef, we'll use the same encoder; all values should be null at this point
+                case "unsupported" -> TopNEncoder.UNSUPPORTED;
+                default -> throw new EsqlIllegalArgumentException("No TopN sorting encoder for type " + inverse.get(channel).type());
             };
         }
         List<TopNOperator.SortOrder> orders = topNExec.order().stream().map(order -> {
