@@ -383,37 +383,39 @@ public class LogicalPlanOptimizer extends RuleExecutor<LogicalPlan> {
                 if (unary instanceof Eval || unary instanceof Project || unary instanceof RegexExtract || unary instanceof Enrich) {
                     return unary.replaceChild(limit.replaceChild(unary.child()));
                 }
-                // limit after mv_expand or limit and sort after mv_expand (| mv_expand x | sort y | limit 5)
-                else if (unary instanceof MvExpand || (unary instanceof OrderBy orderBy && orderBy.child() instanceof MvExpand)) {
-                    MvExpand mvExpand = unary instanceof MvExpand mve ? mve : (MvExpand) (unary.child());
+
+                MvExpand mvExpand = descendantMvExpand(unary);
+                if (mvExpand != null) {
                     Limit limitBeforeMvExpand = limitBeforeMvExpand(mvExpand);
                     // if there is no "appropriate" limit before mv_expand, then push down a copy of the one after it so that:
                     // - a possible TopN is properly built as low as possible in the tree (closed to Lucene)
                     // - the input of mv_expand is as small as possible before it is expanded (less rows to inflate and occupy memory)
                     if (limitBeforeMvExpand == null) {
                         var duplicateLimit = new Limit(limit.source(), limit.limit(), mvExpand.child());
-                        if (unary instanceof OrderBy orderBy) {
-                            return limit.replaceChild(orderBy.replaceChild(mvExpand.replaceChild(duplicateLimit)));
-                        } else {
-                            return limit.replaceChild(mvExpand.replaceChild(duplicateLimit));
-                        }
+                        return limit.replaceChild(propagateDuplicateLimitUntilMvExpand(duplicateLimit, mvExpand, (UnaryPlan) limit.child()));
                     }
                 }
                 // check if there's a 'visible' descendant limit lower than the current one
                 // and if so, align the current limit since it adds no value
                 // this applies for cases such as | limit 1 | sort field | limit 10
-                else {
-                    Limit descendantLimit = descendantLimit(unary);
-                    if (descendantLimit != null) {
-                        var l1 = (int) limit.limit().fold();
-                        var l2 = (int) descendantLimit.limit().fold();
-                        if (l2 <= l1) {
-                            return new Limit(limit.source(), Literal.of(limit.limit(), l2), limit.child());
-                        }
+                Limit descendantLimit = descendantLimit(unary);
+                if (descendantLimit != null) {
+                    var l1 = (int) limit.limit().fold();
+                    var l2 = (int) descendantLimit.limit().fold();
+                    if (l2 <= l1) {
+                        return new Limit(limit.source(), Literal.of(limit.limit(), l2), limit.child());
                     }
                 }
             }
             return limit;
+        }
+
+        private LogicalPlan propagateDuplicateLimitUntilMvExpand(Limit duplicateLimit, MvExpand mvExpand, UnaryPlan child) {
+            if (child == mvExpand) {
+                return mvExpand.replaceChild(duplicateLimit);
+            } else {
+                return child.replaceChild(propagateDuplicateLimitUntilMvExpand(duplicateLimit, mvExpand, (UnaryPlan) child.child()));
+            }
         }
 
         /**
@@ -445,6 +447,21 @@ public class LogicalPlanOptimizer extends RuleExecutor<LogicalPlan> {
             while (plan instanceof Aggregate == false) {
                 if (plan instanceof Limit limit) {
                     return limit;
+                }
+                if (plan.child() instanceof UnaryPlan unaryPlan) {
+                    plan = unaryPlan;
+                } else {
+                    break;
+                }
+            }
+            return null;
+        }
+
+        private static MvExpand descendantMvExpand(UnaryPlan unary) {
+            UnaryPlan plan = unary;
+            while (plan instanceof Aggregate == false) {
+                if (plan instanceof MvExpand mve) {
+                    return mve;
                 }
                 if (plan.child() instanceof UnaryPlan unaryPlan) {
                     plan = unaryPlan;
