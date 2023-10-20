@@ -124,7 +124,7 @@ public class LogicalPlanOptimizerTests extends ESTestCase {
         EsIndex test = new EsIndex("test", mapping);
         IndexResolution getIndexResult = IndexResolution.valid(test);
 
-        logicalOptimizer = new LogicalPlanOptimizer();
+        logicalOptimizer = new LogicalPlanOptimizer(new OptimizerContext(EsqlTestUtils.TEST_CFG));
         EnrichPolicyResolution policy = AnalyzerTestUtils.loadEnrichPolicyResolution(
             "languages_idx",
             "id",
@@ -305,7 +305,7 @@ public class LogicalPlanOptimizerTests extends ESTestCase {
             var value = i == limitWithMinimum ? minimum : randomIntBetween(100, 1000);
             plan = new Limit(EMPTY, L(value), plan);
         }
-        assertEquals(new Limit(EMPTY, L(minimum), relation), new LogicalPlanOptimizer().optimize(plan));
+        assertEquals(new Limit(EMPTY, L(minimum), relation), new LogicalPlanOptimizer(new OptimizerContext(EsqlTestUtils.TEST_CFG)).optimize(plan));
     }
 
     public static GreaterThan greaterThanOf(Expression left, Expression right) {

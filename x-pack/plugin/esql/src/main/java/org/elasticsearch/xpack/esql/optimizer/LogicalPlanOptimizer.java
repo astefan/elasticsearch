@@ -50,14 +50,18 @@ import org.elasticsearch.xpack.ql.optimizer.OptimizerRules.PruneLiteralsInOrderB
 import org.elasticsearch.xpack.ql.optimizer.OptimizerRules.SetAsOptimized;
 import org.elasticsearch.xpack.ql.optimizer.OptimizerRules.SimplifyComparisonsArithmetics;
 import org.elasticsearch.xpack.ql.plan.logical.Aggregate;
+import org.elasticsearch.xpack.ql.plan.logical.EsRelation;
 import org.elasticsearch.xpack.ql.plan.logical.Filter;
 import org.elasticsearch.xpack.ql.plan.logical.Limit;
 import org.elasticsearch.xpack.ql.plan.logical.LogicalPlan;
 import org.elasticsearch.xpack.ql.plan.logical.OrderBy;
 import org.elasticsearch.xpack.ql.plan.logical.Project;
 import org.elasticsearch.xpack.ql.plan.logical.UnaryPlan;
+import org.elasticsearch.xpack.ql.rule.ParameterizedRule;
+import org.elasticsearch.xpack.ql.rule.ParameterizedRuleExecutor;
 import org.elasticsearch.xpack.ql.rule.Rule;
-import org.elasticsearch.xpack.ql.rule.RuleExecutor;
+import org.elasticsearch.xpack.ql.tree.Source;
+import org.elasticsearch.xpack.ql.type.DataTypes;
 import org.elasticsearch.xpack.ql.util.CollectionUtils;
 import org.elasticsearch.xpack.ql.util.Holder;
 
@@ -78,7 +82,11 @@ import static org.elasticsearch.xpack.ql.optimizer.OptimizerRules.PropagateEqual
 import static org.elasticsearch.xpack.ql.optimizer.OptimizerRules.PropagateNullable;
 import static org.elasticsearch.xpack.ql.optimizer.OptimizerRules.TransformDirection;
 
-public class LogicalPlanOptimizer extends RuleExecutor<LogicalPlan> {
+public class LogicalPlanOptimizer extends ParameterizedRuleExecutor<LogicalPlan, OptimizerContext> {
+
+    public LogicalPlanOptimizer(OptimizerContext optimizerContext) {
+        super(optimizerContext);
+    }
 
     public LogicalPlan optimize(LogicalPlan verified) {
         return verified.optimized() ? verified : execute(verified);
@@ -136,9 +144,10 @@ public class LogicalPlanOptimizer extends RuleExecutor<LogicalPlan> {
 
         var skip = new Batch<>("Skip Compute", new SkipQueryOnLimitZero());
         var cleanup = new Batch<>("Clean Up", new ReplaceLimitAndSortAsTopN());
+        var defaultTopN = new Batch<>("Add default TopN", new AddDefaultTopN());
         var label = new Batch<>("Set as Optimized", Limiter.ONCE, new SetAsOptimized());
 
-        return asList(substitutions, operators, skip, cleanup, label);
+        return asList(substitutions, operators, skip, cleanup, defaultTopN, label);
     }
 
     // TODO: currently this rule only works for aggregate functions (AVG)
@@ -459,9 +468,18 @@ public class LogicalPlanOptimizer extends RuleExecutor<LogicalPlan> {
 
         private static MvExpand descendantMvExpand(UnaryPlan unary) {
             UnaryPlan plan = unary;
+            AttributeSet filterReferences = new AttributeSet();
             while (plan instanceof Aggregate == false) {
                 if (plan instanceof MvExpand mve) {
+                    // don't return the mv_expand that has a filter after it which uses the expanded values
+                    // since this will trigger the use of a potentially incorrect (too restrictive) limit further down in the tree
+                    if (filterReferences.contains(mve.target())) {
+                        return null;
+                    }
                     return mve;
+                }
+                if (plan instanceof Filter filter) {
+                    filterReferences.addAll(filter.references());
                 }
                 if (plan.child() instanceof UnaryPlan unaryPlan) {
                     plan = unaryPlan;
@@ -912,6 +930,18 @@ public class LogicalPlanOptimizer extends RuleExecutor<LogicalPlan> {
         }
     }
 
+    static class AddDefaultTopN extends Paramet erizedOptimizerRule<LogicalPlan, OptimizerContext> {
+
+        @Override
+        protected LogicalPlan rule(LogicalPlan plan, OptimizerContext context) {
+            if (plan instanceof UnaryPlan unary && unary.child() instanceof OrderBy order && order.child() instanceof EsRelation relation) {
+                var limit = new Literal(Source.EMPTY, context.configuration().resultTruncationDefaultSize(), DataTypes.INTEGER);
+                return unary.replaceChild(new TopN(plan.source(), relation, order.order(), limit));
+            }
+            return plan;
+        }
+    }
+
     public static class ReplaceRegexMatch extends OptimizerRules.ReplaceRegexMatch {
 
         protected Expression regexToEquals(RegexMatch<?> regexMatch, Literal literal) {
@@ -997,6 +1027,17 @@ public class LogicalPlanOptimizer extends RuleExecutor<LogicalPlan> {
 
             return plan;
         }
+    }
 
+    private abstract static class ParameterizedOptimizerRule<SubPlan extends LogicalPlan, P> extends ParameterizedRule<
+        SubPlan,
+        LogicalPlan,
+        P> {
+
+        public final LogicalPlan apply(LogicalPlan plan, P context) {
+            return plan.transformDown(typeToken(), t -> rule(t, context));
+        }
+
+        protected abstract LogicalPlan rule(SubPlan plan, P context);
     }
 }
