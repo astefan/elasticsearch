@@ -276,6 +276,39 @@ a:integer|b:integer
 1        |2
 ;
 
+inWithNullValueAsField
+row a=1, b=2, c=null | where c in (a, b);
+
+a:integer|b:integer|c:null
+;
+
+inWithNullValueAsValue
+row a=1, b=2, c=null | where a in (b, c);
+
+a:integer|b:integer|c:null
+;
+
+inWithNull1
+row a=1, b=2, c=null | where null in (b, c, a);
+
+a:integer|b:integer|c:null
+1        |2        |null
+;
+
+inWithNull2
+row a=1, b=2, c=null, d=null | where d in (b, a, c);
+
+a:integer|b:integer|c:null|d:null
+1        |2        |null  |null
+;
+
+inWithFoldedNull
+row a=1, b=[1,2] | eval x = a + b | eval true1 = null in (a, b, x), false1 = null not in (a, b, x), true2 = a in (a, b, x), false2 = a not in(a, b, x);
+
+a:integer|b:integer|x:integer|true1:boolean|false1:boolean|true2:boolean|false2:boolean
+1        |[1,2]    |null     |true         |false         |true         |false
+;
+
 inWithExpressions
 // tag::in-with-expressions[]
 ROW a = 1, b = 4, c = 3

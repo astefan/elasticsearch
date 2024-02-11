@@ -38,11 +38,15 @@ import org.elasticsearch.xpack.ql.expression.ExpressionSet;
 import org.elasticsearch.xpack.ql.expression.Expressions;
 import org.elasticsearch.xpack.ql.expression.Literal;
 import org.elasticsearch.xpack.ql.expression.NamedExpression;
+import org.elasticsearch.xpack.ql.expression.Nullability;
 import org.elasticsearch.xpack.ql.expression.Order;
 import org.elasticsearch.xpack.ql.expression.ReferenceAttribute;
 import org.elasticsearch.xpack.ql.expression.function.aggregate.AggregateFunction;
+import org.elasticsearch.xpack.ql.expression.function.scalar.ScalarFunction;
 import org.elasticsearch.xpack.ql.expression.predicate.Predicates;
 import org.elasticsearch.xpack.ql.expression.predicate.logical.Or;
+import org.elasticsearch.xpack.ql.expression.predicate.nulls.IsNotNull;
+import org.elasticsearch.xpack.ql.expression.predicate.nulls.IsNull;
 import org.elasticsearch.xpack.ql.expression.predicate.regex.RegexMatch;
 import org.elasticsearch.xpack.ql.optimizer.OptimizerRules;
 import org.elasticsearch.xpack.ql.optimizer.OptimizerRules.BinaryComparisonSimplification;
@@ -87,7 +91,6 @@ import static org.elasticsearch.xpack.ql.expression.Expressions.asAttributes;
 import static org.elasticsearch.xpack.ql.expression.TypeResolutions.ParamOrdinal.FOURTH;
 import static org.elasticsearch.xpack.ql.expression.TypeResolutions.ParamOrdinal.THIRD;
 import static org.elasticsearch.xpack.ql.expression.TypeResolutions.isFoldable;
-import static org.elasticsearch.xpack.ql.optimizer.OptimizerRules.FoldNull;
 import static org.elasticsearch.xpack.ql.optimizer.OptimizerRules.PropagateEquals;
 import static org.elasticsearch.xpack.ql.optimizer.OptimizerRules.PropagateNullable;
 import static org.elasticsearch.xpack.ql.optimizer.OptimizerRules.TransformDirection;
@@ -119,6 +122,7 @@ public class LogicalPlanOptimizer extends ParameterizedRuleExecutor<LogicalPlan,
             new SplitInWithFoldableValue(),
             new ConstantFolding(),
             new PropagateEvalFoldables(),
+            new FoldNullIn_IsNull_IsNotNull_In(),
             // boolean
             new BooleanSimplification(),
             new LiteralsOnTheRight(),
@@ -302,6 +306,23 @@ public class LogicalPlanOptimizer extends ParameterizedRuleExecutor<LogicalPlan,
                 return Literal.of(lit, byteRefs);
             }
             return lit;
+        }
+    }
+
+    public static class FoldNull extends OptimizerRules.OptimizerExpressionRule<Expression> {
+
+        public FoldNull() {
+            super(TransformDirection.UP);
+        }
+
+        @Override
+        protected Expression rule(Expression e) {
+            if (e instanceof Alias == false
+                && e.nullable() == Nullability.TRUE
+                && Expressions.anyMatch(e.children(), Expressions::isNull)) {
+                return Literal.of(e, null);
+            }
+            return e;
         }
     }
 
@@ -503,6 +524,31 @@ public class LogicalPlanOptimizer extends ParameterizedRuleExecutor<LogicalPlan,
             });
 
             return plan;
+        }
+    }
+
+    public static class FoldNullIn_IsNull_IsNotNull_In extends OptimizerRules.OptimizerExpressionRule<ScalarFunction> {
+
+        public FoldNullIn_IsNull_IsNotNull_In() {
+            super(TransformDirection.UP);
+        }
+
+        @Override
+        protected Expression rule(ScalarFunction f) {
+            if (f instanceof IsNotNull isnn) {
+                if (isnn.field().nullable() == Nullability.FALSE) {
+                    return new Literal(f.source(), Boolean.TRUE, DataTypes.BOOLEAN);
+                }
+            } else if (f instanceof IsNull isn) {
+                if (isn.field().nullable() == Nullability.FALSE) {
+                    return new Literal(f.source(), Boolean.FALSE, DataTypes.BOOLEAN);
+                }
+            } else if (f instanceof org.elasticsearch.xpack.ql.expression.predicate.operator.comparison.In in) {
+                if (Expressions.isNull(in.value())) {
+                    return Literal.of(in, null);
+                }
+            }
+            return f;
         }
     }
 
