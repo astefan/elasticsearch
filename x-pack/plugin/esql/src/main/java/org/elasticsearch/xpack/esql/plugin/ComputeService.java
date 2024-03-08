@@ -629,13 +629,26 @@ public class ComputeService {
             List<ShardId> shardIds = request.shardIds().subList(startBatchIndex, endBatchIndex);
             acquireSearchContexts(clusterAlias, shardIds, configuration, request.aliasFilters(), ActionListener.wrap(searchContexts -> {
                 assert ThreadPool.assertCurrentThreadPool(ESQL_THREAD_POOL_NAME, ESQL_WORKER_THREAD_POOL_NAME);
-                var computeContext = new ComputeContext(sessionId, clusterAlias, searchContexts, configuration, null, exchangeSink);
-                runCompute(
-                    parentTask,
-                    computeContext,
-                    request.plan(),
-                    ActionListener.wrap(profiles -> onBatchCompleted(endBatchIndex, profiles), this::onFailure)
-                );
+                // create local ExchangeSource handler, for any per-node source-sink needs
+                final var localExchangeSource = new ExchangeSourceHandler(configuration.pragmas().exchangeBufferSize(), esqlExecutor);
+                try (Releasable ignored = localExchangeSource.addEmptySink();
+                // RefCountingListener refs = new RefCountingListener(listener.map(unused -> new ComputeResponse(collectedProfiles)))
+                ) {
+                    var computeContext = new ComputeContext(
+                        sessionId,
+                        clusterAlias,
+                        searchContexts,
+                        configuration,
+                        localExchangeSource,
+                        exchangeSink
+                    );
+                    runCompute(
+                        parentTask,
+                        computeContext,
+                        request.plan(),
+                        ActionListener.wrap(profiles -> onBatchCompleted(endBatchIndex, profiles), this::onFailure)
+                    );
+                }
             }, this::onFailure));
         }
 

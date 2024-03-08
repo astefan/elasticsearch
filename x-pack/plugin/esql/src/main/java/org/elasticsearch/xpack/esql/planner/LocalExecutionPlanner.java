@@ -148,7 +148,7 @@ public class LocalExecutionPlanner {
     /**
      * turn the given plan into a list of drivers to execute
      */
-    public LocalExecutionPlan plan(PhysicalPlan node) {
+    public LocalExecutionPlan plan(PhysicalPlan localPhysicalPlan) {
         var context = new LocalExecutionPlannerContext(
             new ArrayList<>(),
             new Holder<>(DriverParallelism.SINGLE),
@@ -159,13 +159,61 @@ public class LocalExecutionPlanner {
         );
 
         // workaround for https://github.com/elastic/elasticsearch/issues/99782
-        node = node.transformUp(
+        localPhysicalPlan = localPhysicalPlan.transformUp(
             AggregateExec.class,
             a -> a.getMode() == AggregateExec.Mode.FINAL ? new ProjectExec(a.source(), a, Expressions.asAttributes(a.aggregates())) : a
         );
-        PhysicalOperation physicalOperation = plan(node, context);
 
         final TimeValue statusInterval = configuration.pragmas().statusInterval();
+        PhysicalOperation physicalOperation;
+
+        if (exchangeSinkHandler != null) {// this is a data node. And this is hack to differentiate between coordinator and data
+            List<PhysicalPlan> topNExecs = localPhysicalPlan.collectFirstChildren(TopNExec.class::isInstance);
+            PhysicalPlan lowerTopNPlan = localPhysicalPlan;
+
+            if (topNExecs.isEmpty() == false) {
+                // get the first TopN
+                TopNExec topNExec = (TopNExec) topNExecs.get(0);
+                /**
+                 * We could do better here and split the plan where the TopN is, BUT at that point together with all the needed
+                 * fields in the TopN output/input, there is also the _doc that is usually needed in situation when the final projections
+                 * include more than the TopN fields.
+                 * We can improve this in a follow up PR.
+                 */
+                // split the given plan right after the exchange sink
+                if (localPhysicalPlan instanceof ExchangeSinkExec sinkExec) {
+                    var child = sinkExec.child();
+                    lowerTopNPlan = new ExchangeSinkExec(child.source(), child.output(), false, child);
+
+                    ExchangeSourceExec sourceExec = new ExchangeSourceExec(child.source(), child.output(), false);
+                    TopNExec reducingTopN = new TopNExec(
+                        topNExec.source(),
+                        sourceExec,
+                        topNExec.order(),
+                        topNExec.limit(),
+                        topNExec.estimatedRowSize()
+                    );
+                    localPhysicalPlan = sinkExec.replaceChild(reducingTopN);
+
+                    PhysicalOperation upperTopNPhysicalOperation = plan(localPhysicalPlan, context);
+                    context.addDriverFactory(
+                        new DriverFactory(
+                            new DriverSupplier(
+                                context.bigArrays,
+                                context.blockFactory,
+                                upperTopNPhysicalOperation,
+                                statusInterval,
+                                settings
+                            ),
+                            context.driverParallelism().get()
+                        )
+                    );
+                }
+            }
+            physicalOperation = plan(lowerTopNPlan, context);
+        } else {
+            physicalOperation = plan(localPhysicalPlan, context);
+        }
         context.addDriverFactory(
             new DriverFactory(
                 new DriverSupplier(context.bigArrays, context.blockFactory, physicalOperation, statusInterval, settings),
