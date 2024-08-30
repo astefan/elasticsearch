@@ -44,6 +44,7 @@ centroidNull:null|centroidExpNull:geo_point|centroidEvalNull:geo_point
 null             |null                     |null
 ;
 
+########### failing :-( with InvalidArgumentException: Does not support yet aggregations over constants
 centroidFromStringNested
 required_capability: st_centroid_agg
 
@@ -1311,6 +1312,7 @@ wkt:keyword                                           |pt:cartesian_point
 ["POINT(4297.11 -1475.53)", "POINT(7580.93 2272.77)"] |[POINT(4297.11 -1475.53), POINT(7580.93 2272.77)]
 ;
 
+########### failing :-( with InvalidArgumentException: Does not support yet aggregations over constants
 centroidCartesianFromStringNested
 required_capability: st_centroid_agg
 

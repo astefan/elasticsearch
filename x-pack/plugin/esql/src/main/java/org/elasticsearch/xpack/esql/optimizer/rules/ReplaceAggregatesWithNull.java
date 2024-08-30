@@ -73,9 +73,9 @@ public final class ReplaceAggregatesWithNull extends OptimizerRules.OptimizerRul
                  * Add an eval for every null (even if they are all "null"s, they can have different data types,
                  * depending on the Aggregate function return type).
                  * Also, copy the original alias id so that other nodes using it down stream (e.g. eval referring to the original agg)
-                 * don't have to updated. PruneColumns makes use of the Attribute ids to decide if unused references can be removed.
+                 * don't have to be updated. PruneColumns makes use of the Attribute ids to decide if unused references can be removed.
                  */
-                var aliased = new Alias(agg.source(), agg.name(), null, Literal.of(agg, value), agg.toAttribute().id());
+                var aliased = new Alias(agg.source(), agg.name(), Literal.of(agg, value), agg.toAttribute().id(), true);
                 transientEval.add(aliased);
                 changed = true;
             } else {
