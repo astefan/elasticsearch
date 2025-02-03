@@ -8,22 +8,24 @@ package org.elasticsearch.xpack.esql.plan.logical;
 
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.core.Nullable;
+import org.elasticsearch.xpack.esql.core.capabilities.Resolvables;
 import org.elasticsearch.xpack.esql.core.expression.Attribute;
-import org.elasticsearch.xpack.esql.core.expression.UnresolvedAttribute;
+import org.elasticsearch.xpack.esql.core.expression.NamedExpression;
 import org.elasticsearch.xpack.esql.core.tree.NodeInfo;
 import org.elasticsearch.xpack.esql.core.tree.Source;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class Insist extends UnaryPlan {
-    private final UnresolvedAttribute insistIdentifier;
+import static org.elasticsearch.xpack.esql.expression.NamedExpressions.mergeOutputAttributes;
 
-    public Insist(Source source, UnresolvedAttribute insistIdentifier, LogicalPlan child) {
+public class Insist extends UnaryPlan {
+    private final List<NamedExpression> fields;
+
+    public Insist(Source source, LogicalPlan child, List<NamedExpression> fields) {
         super(source, child);
-        this.insistIdentifier = insistIdentifier;
+        this.fields = fields;
     }
 
     private @Nullable List<Attribute> lazyOutput = null;
@@ -37,28 +39,30 @@ public class Insist extends UnaryPlan {
     }
 
     private List<Attribute> computeOutput() {
-        var result = new ArrayList<>(child().output());
-        result.add(insistIdentifier);
-        return result;
+        if (lazyOutput == null) {
+            lazyOutput = mergeOutputAttributes(fields, child().output());
+        }
+
+        return lazyOutput;
     }
 
-    public UnresolvedAttribute getInsistIdentifier() {
-        return insistIdentifier;
+    public List<NamedExpression> fields() {
+        return fields;
     }
 
     @Override
     public Insist replaceChild(LogicalPlan newChild) {
-        return new Insist(source(), insistIdentifier, newChild);
+        return new Insist(source(), newChild, fields);
     }
 
     @Override
     public boolean expressionsResolved() {
-        return computeOutput().stream().allMatch(Attribute::resolved);
+        return Resolvables.resolved(fields);
     }
 
     @Override
     protected NodeInfo<? extends LogicalPlan> info() {
-        return NodeInfo.create(this, Insist::new, insistIdentifier, child());
+        return NodeInfo.create(this, Insist::new, child(), fields());
     }
 
     @Override
@@ -73,11 +77,11 @@ public class Insist extends UnaryPlan {
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), Objects.hashCode(insistIdentifier));
+        return Objects.hash(super.hashCode(), Objects.hashCode(fields));
     }
 
     @Override
     public boolean equals(Object obj) {
-        return super.equals(obj) && ((Insist) obj).insistIdentifier.equals(insistIdentifier);
+        return super.equals(obj) && ((Insist) obj).fields.equals(fields);
     }
 }

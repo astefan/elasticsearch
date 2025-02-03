@@ -298,13 +298,14 @@ public class LogicalPlanBuilder extends ExpressionBuilder {
 
     @Override
     public PlanFactory visitInsistCommand(EsqlBaseParser.InsistCommandContext ctx) {
-        var source = source(ctx);
-        return input -> {
-            if (input instanceof EsRelation || input instanceof UnresolvedRelation) {
-                return new Insist(source, new UnresolvedAttribute(source, visitIdentifier(ctx.identifier())), input);
+        var src = source(ctx);
+        List<NamedExpression> fields = visitQualifiedNamePatterns(ctx.qualifiedNamePatterns(), ne -> {
+            if (ne instanceof UnresolvedStar) {
+                throw new ParsingException(src, "Cannot specify [*] with INSIST", src.text());
             }
-            throw new ParsingException(source, "INSIST command can only be applied on top of a FROM command.");
-        };
+        });
+
+        return child -> new Insist(src, child, fields);
     }
 
     @Override
