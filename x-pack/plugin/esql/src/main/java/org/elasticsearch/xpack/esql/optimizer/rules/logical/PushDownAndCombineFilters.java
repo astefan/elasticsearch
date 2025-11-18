@@ -132,30 +132,32 @@ public final class PushDownAndCombineFilters extends OptimizerRules.Parameterize
         return new ScopedFilter(rest, leftFilters, rightFilters);
     }
 
-    // split the filter condition in 2 parts:
-    // 1. filters that can be applied only to the right
-    // 2. filters that can be applied to both sides
-    // 3. filters that can be applied only to the left
+    // split the filter condition in 3 parts:
+    // 1. filters that reference attributes from the right side only
+    // 2. filters that reference attributes from both sides
+    // 3. filters that reference attributes from the left side only
     private static ScopedFilter scopeInlineStatsFilter(List<Expression> filters, InlineJoin ij) {
         List<Expression> rightFilters = new ArrayList<>();
         List<Expression> bothSides = new ArrayList<>();
         List<Expression> leftFilters = new ArrayList<>(filters);
 
-        AttributeSet leftOutput = ij.left().outputSet();
-        AttributeSet rightOutput = AttributeSet.of(ij.config().rightFields());
+        AttributeSet leftOutputSet = ij.left().outputSet();
+        AttributeSet rightOutputSet = ij.right().outputSet();
+        AttributeSet rightOutputSetWithoutKeys = rightOutputSet.subtract(AttributeSet.of(ij.config().rightFields()));
 
         leftFilters.removeIf(f -> {
-            if (f.references().subsetOf(rightOutput)) {
-                if (f.references().subsetOf(leftOutput)) {
+            if (f.references().subsetOf(rightOutputSet)) {
+                if (f.references().subsetOf(leftOutputSet)) {
                     bothSides.add(f);
-                } else {
+                    return true;
+                } else if (f.references().subsetOf(rightOutputSetWithoutKeys)) {
                     rightFilters.add(f);
+                    return true;
                 }
-                return true;
             }
             return false;
         });
-        return new ScopedFilter(bothSides, leftFilters, rightFilters);
+        return new ScopedFilter(leftFilters, bothSides, rightFilters);
     }
 
     private static LogicalPlan pushDownPastJoin(Filter filter, Join join, FoldContext foldCtx) {
@@ -176,28 +178,24 @@ public final class PushDownAndCombineFilters extends OptimizerRules.Parameterize
                 ? scopeInlineStatsFilter(Predicates.splitAnd(filter.condition()), ij)
                 : scopeFilter(Predicates.splitAnd(filter.condition()), left, right);
 
-            // For InlineJoin, in EsqlSession the left-hand side becomes the source for the right-hand side replacing the StubRelation
-            // and, as such, the filters used on the left-hand side are also used on the right-hand side.
-            var pushableToLeftSide = join instanceof InlineJoin ? scoped.commonFilters() : scoped.leftFilters();
-            var pushableToRightSide = scoped.rightFilters();
-            var commonFilters = join instanceof InlineJoin ? scoped.leftFilters() : scoped.commonFilters();
             boolean optimizationApplied = false;
             // push the left scoped filter down to the left child
-            if (pushableToLeftSide.size() > 0) {
+            if (scoped.leftFilters.size() > 0) {
                 // push the filter down to the left child
-                left = new Filter(left.source(), left, Predicates.combineAnd(pushableToLeftSide));
+                left = new Filter(left.source(), left, Predicates.combineAnd(scoped.leftFilters));
                 // update the join with the new left child
                 join = (Join) join.replaceLeft(left);
                 // we completely applied the left filters, so we can remove them from the scoped filters
-                scoped = new ScopedFilter(commonFilters, List.of(), scoped.rightFilters);
+                scoped = new ScopedFilter(scoped.commonFilters, List.of(), scoped.rightFilters);
                 optimizationApplied = true;
             }
             // push the right scoped filter down to the right child
             // We check if each AND component of the filter is already part of the right side filter before we add it
             // In the future, this optimization can apply to other types of joins as well such as InlineJoin
             // but for now we limit it to LEFT joins only, till filters are supported for other join types
-            if (pushableToRightSide.isEmpty() == false) {
-                List<Expression> rightPushableFilters = buildRightPushableFilters(pushableToRightSide, foldCtx);
+            if (scoped.rightFilters.isEmpty() == false && join instanceof InlineJoin == false) {
+                //List<Expression> rightPushableFilters = buildRightPushableFilters(pushableToRightSide, foldCtx);
+                List<Expression> rightPushableFilters = buildRightPushableFilters(scoped.rightFilters, foldCtx);
                 if (rightPushableFilters.isEmpty() == false) {
                     if (join.right() instanceof Filter existingRightFilter) {
                         // merge the unique AND filter components from rightPushableFilters and existingRightFilter.condition()
@@ -243,7 +241,7 @@ public final class PushDownAndCombineFilters extends OptimizerRules.Parameterize
             }
             if (optimizationApplied) {
                 // if we pushed down some filters, we need to update the filters to reapply above the join
-                Expression remainingFilter = Predicates.combineAnd(CollectionUtils.combine(scoped.commonFilters, scoped.rightFilters));
+                Expression remainingFilter = Predicates.combineAnd(CollectionUtils.combine(scoped.commonFilters(), scoped.rightFilters));
                 plan = remainingFilter != null ? filter.with(join, remainingFilter) : join;
             }
         }
