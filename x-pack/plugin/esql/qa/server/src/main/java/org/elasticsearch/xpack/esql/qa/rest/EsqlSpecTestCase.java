@@ -308,14 +308,14 @@ public abstract class EsqlSpecTestCase extends ESRestTestCase {
     }
 
     protected boolean supportsExponentialHistograms() {
-        return RestEsqlTestCase.hasCapabilities(
+        return hasCapabilities(
             client(),
             List.of(EsqlCapabilities.Cap.EXPONENTIAL_HISTOGRAM_TECH_PREVIEW.capabilityName())
         );
     }
 
     protected boolean supportsTDigestField() {
-        return RestEsqlTestCase.hasCapabilities(client(), List.of(EsqlCapabilities.Cap.TDIGEST_FIELD_TYPE_SUPPORT_V1.capabilityName()));
+        return hasCapabilities(client(), List.of(EsqlCapabilities.Cap.TDIGEST_FIELD_TYPE_SUPPORT_V1.capabilityName()));
     }
 
     protected void doTest() throws Throwable {

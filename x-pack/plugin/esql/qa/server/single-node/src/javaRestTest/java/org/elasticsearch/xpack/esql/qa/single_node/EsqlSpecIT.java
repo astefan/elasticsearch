@@ -13,6 +13,8 @@ import org.elasticsearch.client.Request;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.test.TestClustersThreadFilter;
 import org.elasticsearch.test.cluster.ElasticsearchCluster;
+import org.elasticsearch.test.junit.annotations.TestIssueLogging;
+import org.elasticsearch.test.junit.annotations.TestLogging;
 import org.elasticsearch.xcontent.XContentBuilder;
 import org.elasticsearch.xcontent.json.JsonXContent;
 import org.elasticsearch.xpack.esql.CsvSpecReader.CsvTestCase;
@@ -28,6 +30,15 @@ import java.io.IOException;
 import java.util.List;
 
 @ThreadLeakFilters(filters = TestClustersThreadFilter.class)
+/*@TestLogging(
+    //value = "org.elasticsearch.compute.operator.ChangePointOperator:DEBUG," +
+    value = "org.elasticsearch.xpack.esql.expression.function.scalar:TRACE",
+    reason = "To understand better whether certain warnings are registered or not; " +
+        "see https://github.com/elastic/elasticsearch/issues/139262")*/
+@TestIssueLogging(
+    //value = "org.elasticsearch.compute.operator.ChangePointOperator:DEBUG," +
+    value = "org.elasticsearch.xpack.esql.expression.function.scalar:TRACE",
+    issueUrl = "https://github.com/elastic/elasticsearch/issues/139262")
 public class EsqlSpecIT extends EsqlSpecTestCase {
     @ClassRule
     public static ElasticsearchCluster cluster = Clusters.testCluster(

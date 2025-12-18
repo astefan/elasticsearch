@@ -167,6 +167,7 @@ public abstract class AbstractConvertFunction extends UnaryScalarFunction implem
 
         protected final void registerException(Exception exception) {
             logger.trace("conversion failure", exception);
+            System.out.println("conversion failure: " + exception.getMessage());
             warnings.registerException(exception);
         }
     }
