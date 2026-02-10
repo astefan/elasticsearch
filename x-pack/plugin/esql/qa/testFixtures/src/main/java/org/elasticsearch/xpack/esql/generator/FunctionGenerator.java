@@ -357,7 +357,7 @@ public class FunctionGenerator {
     public static String concatFunction(List<Column> columns, boolean allowUnmapped) {
         List<String> stringFields = columns.stream()
             .filter(c -> c.type().equals("keyword") || c.type().equals("text"))
-            .map(Column::name)
+            .map(c -> EsqlQueryGenerator.needsQuoting(c.name()) ? EsqlQueryGenerator.quote(c.name()) : c.name())
             .limit(randomIntBetween(2, 4))
             .collect(Collectors.toList());
         if (stringFields.isEmpty()) {
@@ -435,7 +435,7 @@ public class FunctionGenerator {
     public static String dateDiffFunction(List<Column> columns, boolean allowUnmapped) {
         List<String> dateFields = columns.stream()
             .filter(c -> c.type().equals("date") || c.type().equals("datetime"))
-            .map(Column::name)
+            .map(c -> EsqlQueryGenerator.needsQuoting(c.name()) ? EsqlQueryGenerator.quote(c.name()) : c.name())
             .collect(Collectors.toList());
         // Possibly add an unmapped field
         if (allowUnmapped && randomIntBetween(0, 100) < UNMAPPED_FIELD_PROBABILITY) {
@@ -551,7 +551,8 @@ public class FunctionGenerator {
             return null;
         }
 
-        String field1 = sameTypeColumns.get(randomIntBetween(0, sameTypeColumns.size() - 1)).name();
+        String field1Raw = sameTypeColumns.get(randomIntBetween(0, sameTypeColumns.size() - 1)).name();
+        String field1 = EsqlQueryGenerator.needsQuoting(field1Raw) ? EsqlQueryGenerator.quote(field1Raw) : field1Raw;
 
         // Coalesce is perfect for testing unmapped fields - it handles nulls by design
         // Use unmapped field as first argument (will be null, so second arg is returned)
@@ -562,7 +563,8 @@ public class FunctionGenerator {
 
         // Pick a second field of the same type
         if (sameTypeColumns.size() >= 2) {
-            String field2 = sameTypeColumns.get(randomIntBetween(0, sameTypeColumns.size() - 1)).name();
+            String field2Raw = sameTypeColumns.get(randomIntBetween(0, sameTypeColumns.size() - 1)).name();
+            String field2 = EsqlQueryGenerator.needsQuoting(field2Raw) ? EsqlQueryGenerator.quote(field2Raw) : field2Raw;
             if (field1.equals(field2) == false) {
                 return "coalesce(" + field1 + ", " + field2 + ")";
             }
@@ -585,7 +587,7 @@ public class FunctionGenerator {
         String targetType = randomFrom("integer", "long", "double");
         List<String> sameTypeFields = columns.stream()
             .filter(c -> c.type().equals(targetType))
-            .map(Column::name)
+            .map(c -> EsqlQueryGenerator.needsQuoting(c.name()) ? EsqlQueryGenerator.quote(c.name()) : c.name())
             .collect(Collectors.toList());
 
         // Possibly add an unmapped field (which has NULL type, accepted by these functions)
