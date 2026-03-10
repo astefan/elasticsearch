@@ -125,6 +125,15 @@ public class InlineStatsMemoryBenchmark {
                 ColumnDef.keywordCol("key1", 20),
                 ColumnDef.keywordCol("key2", 20),
                 ColumnDef.keywordCol("key3", 20) }
+        ),
+        new Scenario(
+            "COUNT(*) BY keywords(20,30,15)",
+            "FROM logs | INLINE STATS count = COUNT(*) BY service, trace_id, status",
+            new ColumnDef[] {
+                ColumnDef.longCol("count"),
+                ColumnDef.keywordCol("key1", 20),
+                ColumnDef.keywordCol("key2", 30),
+                ColumnDef.keywordCol("key3", 15) }
         ), };
 
     private static final int[] GROUP_COUNTS = { 100, 1_000, 10_000, 30_000, 100_000, 300_000, 1_000_000 };
