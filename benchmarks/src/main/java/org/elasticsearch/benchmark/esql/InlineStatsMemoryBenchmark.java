@@ -65,9 +65,22 @@ public class InlineStatsMemoryBenchmark {
         }
     }
 
-    record Scenario(String description, String sampleQuery, ColumnDef[] columns) {}
+    record Scenario(String description, String sampleQuery, ColumnDef[] columns, int minGroups, int maxGroups) {
+        Scenario(String description, String sampleQuery, ColumnDef[] columns) {
+            this(description, sampleQuery, columns, 0, Integer.MAX_VALUE);
+        }
+
+        Scenario(String description, String sampleQuery, ColumnDef[] columns, int minGroups, int maxGroups) {
+            this.description = description;
+            this.sampleQuery = sampleQuery;
+            this.columns = columns;
+            this.minGroups = minGroups;
+            this.maxGroups = maxGroups;
+        }
+    }
 
     private static final Scenario[] SCENARIOS = {
+        // --- Short keywords (10 bytes) ---
         new Scenario(
             "COUNT(*) BY keyword(10)",
             "FROM logs | INLINE STATS count = COUNT(*) BY status",
@@ -98,16 +111,6 @@ public class InlineStatsMemoryBenchmark {
             new ColumnDef[] { ColumnDef.longCol("count"), ColumnDef.longCol("key") }
         ),
         new Scenario(
-            "AVG(x) BY keyword(50)",
-            "FROM products | INLINE STATS avg_rating = AVG(rating) BY product_name",
-            new ColumnDef[] { ColumnDef.doubleCol("avg"), ColumnDef.keywordCol("key", 50) }
-        ),
-        new Scenario(
-            "AVG(x) BY keyword(100)",
-            "FROM documents | INLINE STATS avg_score = AVG(score) BY url",
-            new ColumnDef[] { ColumnDef.doubleCol("avg"), ColumnDef.keywordCol("key", 100) }
-        ),
-        new Scenario(
             "COUNT+AVG BY 3 keywords(10)",
             "FROM logs | INLINE STATS count = COUNT(*), avg_duration = AVG(duration) BY host, region, service",
             new ColumnDef[] {
@@ -116,6 +119,17 @@ public class InlineStatsMemoryBenchmark {
                 ColumnDef.keywordCol("key1", 10),
                 ColumnDef.keywordCol("key2", 10),
                 ColumnDef.keywordCol("key3", 10) }
+        ),
+        // --- Medium keywords (50, 100 bytes) ---
+        new Scenario(
+            "AVG(x) BY keyword(50)",
+            "FROM products | INLINE STATS avg_rating = AVG(rating) BY product_name",
+            new ColumnDef[] { ColumnDef.doubleCol("avg"), ColumnDef.keywordCol("key", 50) }
+        ),
+        new Scenario(
+            "AVG(x) BY keyword(100)",
+            "FROM documents | INLINE STATS avg_score = AVG(score) BY url",
+            new ColumnDef[] { ColumnDef.doubleCol("avg"), ColumnDef.keywordCol("key", 100) }
         ),
         new Scenario(
             "COUNT(*) BY 3 keywords(20)",
@@ -134,9 +148,92 @@ public class InlineStatsMemoryBenchmark {
                 ColumnDef.keywordCol("key1", 20),
                 ColumnDef.keywordCol("key2", 30),
                 ColumnDef.keywordCol("key3", 15) }
+        ),
+        // --- 256-byte keywords (capped at 100K groups) ---
+        new Scenario(
+            "1 agg BY 1 keyword(256)",
+            "FROM logs | INLINE STATS count = COUNT(*) BY message",
+            new ColumnDef[] { ColumnDef.longCol("count"), ColumnDef.keywordCol("key", 256) },
+            30_000, 100_000
+        ),
+        new Scenario(
+            "2 aggs BY 1 keyword(256)",
+            "FROM logs | INLINE STATS count = COUNT(*), avg_dur = AVG(duration) BY message",
+            new ColumnDef[] { ColumnDef.longCol("count"), ColumnDef.doubleCol("avg"), ColumnDef.keywordCol("key", 256) },
+            30_000, 100_000
+        ),
+        new Scenario(
+            "3 aggs BY 1 keyword(256)",
+            "FROM logs | INLINE STATS count = COUNT(*), min_dur = MIN(duration), max_dur = MAX(duration) BY message",
+            new ColumnDef[] {
+                ColumnDef.longCol("count"),
+                ColumnDef.longCol("min"),
+                ColumnDef.longCol("max"),
+                ColumnDef.keywordCol("key", 256) },
+            30_000, 100_000
+        ),
+        new Scenario(
+            "1 agg BY 2 keywords(256)",
+            "FROM logs | INLINE STATS count = COUNT(*) BY message, user_agent",
+            new ColumnDef[] { ColumnDef.longCol("count"), ColumnDef.keywordCol("key1", 256), ColumnDef.keywordCol("key2", 256) },
+            30_000, 100_000
+        ),
+        new Scenario(
+            "2 aggs BY 2 keywords(256)",
+            "FROM logs | INLINE STATS count = COUNT(*), avg_dur = AVG(duration) BY message, user_agent",
+            new ColumnDef[] {
+                ColumnDef.longCol("count"),
+                ColumnDef.doubleCol("avg"),
+                ColumnDef.keywordCol("key1", 256),
+                ColumnDef.keywordCol("key2", 256) },
+            30_000, 100_000
+        ),
+        new Scenario(
+            "3 aggs BY 2 keywords(256)",
+            "FROM logs | INLINE STATS count = COUNT(*), min_dur = MIN(duration), max_dur = MAX(duration) BY message, user_agent",
+            new ColumnDef[] {
+                ColumnDef.longCol("count"),
+                ColumnDef.longCol("min"),
+                ColumnDef.longCol("max"),
+                ColumnDef.keywordCol("key1", 256),
+                ColumnDef.keywordCol("key2", 256) },
+            30_000, 100_000
+        ),
+        new Scenario(
+            "1 agg BY 3 keywords(256)",
+            "FROM logs | INLINE STATS count = COUNT(*) BY message, user_agent, referrer",
+            new ColumnDef[] {
+                ColumnDef.longCol("count"),
+                ColumnDef.keywordCol("key1", 256),
+                ColumnDef.keywordCol("key2", 256),
+                ColumnDef.keywordCol("key3", 256) },
+            30_000, 100_000
+        ),
+        new Scenario(
+            "2 aggs BY 3 keywords(256)",
+            "FROM logs | INLINE STATS count = COUNT(*), avg_dur = AVG(duration) BY message, user_agent, referrer",
+            new ColumnDef[] {
+                ColumnDef.longCol("count"),
+                ColumnDef.doubleCol("avg"),
+                ColumnDef.keywordCol("key1", 256),
+                ColumnDef.keywordCol("key2", 256),
+                ColumnDef.keywordCol("key3", 256) },
+            30_000, 100_000
+        ),
+        new Scenario(
+            "3 aggs BY 3 keywords(256)",
+            "FROM logs | INLINE STATS count = COUNT(*), min_dur = MIN(duration), max_dur = MAX(duration) BY message, user_agent, referrer",
+            new ColumnDef[] {
+                ColumnDef.longCol("count"),
+                ColumnDef.longCol("min"),
+                ColumnDef.longCol("max"),
+                ColumnDef.keywordCol("key1", 256),
+                ColumnDef.keywordCol("key2", 256),
+                ColumnDef.keywordCol("key3", 256) },
+            30_000, 100_000
         ), };
 
-    private static final int[] GROUP_COUNTS = { 100, 1_000, 10_000, 30_000, 100_000, 300_000, 1_000_000 };
+    private static final int[] GROUP_COUNTS = { 100, 1_000, 10_000, 30_000, 50_000, 70_000, 100_000, 300_000, 1_000_000 };
 
     public static void main(String[] args) {
         printLimitTable();
@@ -164,24 +261,36 @@ public class InlineStatsMemoryBenchmark {
         System.out.println();
 
         StringBuilder header = new StringBuilder();
-        header.append(String.format("  %18s | %12s", "Groups cardinality", "Memory used"));
+        header.append(String.format("  %18s | %12s | %17s", "Groups cardinality", "Memory used", "needed % of 4gb"));
         for (long heap : REFERENCE_HEAPS_BYTES) {
             header.append(String.format(" | %s", padCenter("Heap " + ByteSizeValue.ofBytes(heap), 10)));
         }
         System.out.println(header);
 
         StringBuilder separator = new StringBuilder();
-        separator.append(String.format("  %s-+-%s", "-".repeat(18), "-".repeat(12)));
+        separator.append(String.format("  %s-+-%s-+-%s", "-".repeat(18), "-".repeat(12), "-".repeat(17)));
         for (int i = 0; i < REFERENCE_HEAPS_BYTES.length; i++) {
             separator.append("-+-").append("-".repeat(10));
         }
         System.out.println(separator);
 
+        long referenceHeap = gb(4);
         for (int numGroups : GROUP_COUNTS) {
+            if (numGroups < scenario.minGroups || numGroups > scenario.maxGroups) {
+                continue;
+            }
             long memBytes = measureMemory(numGroups, scenario.columns);
+            double heapPct = (memBytes * 100.0) / referenceHeap;
 
             StringBuilder row = new StringBuilder();
-            row.append(String.format("  %18s | %12s", formatGroupCount(numGroups), ByteSizeValue.ofBytes(memBytes)));
+            row.append(
+                String.format(
+                    "  %18s | %12s | %16s",
+                    formatGroupCount(numGroups),
+                    ByteSizeValue.ofBytes(memBytes),
+                    String.format(Locale.ROOT, "%.3f%%", heapPct)
+                )
+            );
             for (long heap : REFERENCE_HEAPS_BYTES) {
                 long limit = heap / 1000;
                 double pct = (memBytes * 100.0) / limit;
