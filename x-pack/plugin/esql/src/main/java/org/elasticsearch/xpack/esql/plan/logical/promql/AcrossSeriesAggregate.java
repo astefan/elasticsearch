@@ -20,8 +20,6 @@ import org.elasticsearch.xpack.esql.plan.logical.LogicalPlan;
 import java.util.List;
 import java.util.Objects;
 
-import static java.util.function.Predicate.not;
-
 /**
  * Represents a PromQL aggregate function call that operates across multiple time series.
  * <p>
@@ -115,7 +113,8 @@ public final class AcrossSeriesAggregate extends PromqlFunctionCall {
         if (grouping == Grouping.WITHOUT) {
             return List.of(timeseriesAttribute);
         }
-        return groupings.stream().filter(not(a -> a.dataType() == DataType.NULL)).toList();
+        assert expressionsResolved() : "output() called on unresolved plan";
+        return groupings.stream().filter(a -> a.dataType() != DataType.NULL).toList();
     }
 
     @Override
